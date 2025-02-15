@@ -1,0 +1,36 @@
+# 🛑 Dossier de build (sera recréé avec `pnpm run build`)
+dist/
+
+# 🛑 Modules Node.js (chaque machine doit installer ses dépendances)
+node_modules/
+
+# 🛑 Fichiers cache de l'éditeur
+.vscode/
+.idea/
+*.swp
+
+# 🛑 Cache TypeScript & Next.js
+.next/
+turbo/
+*.tsbuildinfo
+
+# 🛑 Cache des gestionnaires de paquets
+.pnpm-store/
+.npm/
+.yarn/
+.yarn-cache/
+
+# 🛑 Logs & fichiers de diagnostic
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# 🛑 Fichiers système macOS & Linux
+.DS_Store
+Thumbs.db
+
+# 🛑 Sortie des tests Jest
+coverage/
+jest-coverage/
