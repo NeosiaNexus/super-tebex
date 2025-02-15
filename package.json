@@ -27,7 +27,8 @@
     "lint": "eslint . --fix",
     "prepare": "husky install",
     "format": "prettier --write .",
-    "clean": "pnpm run format && pnpm run lint"
+    "clean": "pnpm run format && pnpm run lint",
+    "prepublishOnly": "rm -rf dist && pnpm build"
   },
   "keywords": [
     "tebex",
