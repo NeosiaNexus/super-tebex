@@ -31,7 +31,7 @@ class STRequest {
 
     const responseJson = await response.json();
 
-    return responseJson.data;
+    return (responseJson.data ?? responseJson) as T;
   }
 
   private getRoute(route: STRequestRoute) {
