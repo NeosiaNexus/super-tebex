@@ -16,10 +16,14 @@
     "package.json",
     "README.md"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NeosiaNexus/super-tebex"
+  },
   "scripts": {
     "dev": "tsup src/index.ts --watch",
     "build": "tsup src/index.ts",
-    "test": "jest",
+    "test": "jest --passWithNoTests",
     "lint": "eslint . --fix",
     "prepare": "husky install",
     "format": "prettier --write .",
@@ -34,6 +38,7 @@
   "author": "NeosiaNexus",
   "license": "MIT",
   "dependencies": {
+    "ts-node": "^10.9.2",
     "tsup": "^8.3.6",
     "typescript": "^5.7.3"
   },
