@@ -6,7 +6,7 @@ class STRequest {
     endpoint: string,
     method: STRequestMethod,
     errorMessage?: string,
-    body: null | Record<string, string> = null,
+    body: null | Record<string, unknown> = null,
     headersContent: Record<string, string> = {},
     route: STRequestRoute = "HEADLESS",
   ): Promise<T> {
@@ -29,7 +29,9 @@ class STRequest {
       );
     }
 
-    return response.json().then((data) => (data.data ?? data) as T);
+    const responseJson = await response.json();
+
+    return (responseJson.data ?? responseJson) as T;
   }
 
   private getRoute(route: STRequestRoute) {
