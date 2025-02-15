@@ -7,15 +7,12 @@
   "types": "dist/index.d.ts",
   "type": "module",
   "exports": {
-    "import": "./dist/index.mjs",
-    "require": "./dist/index.js",
-    "types": "./dist/index.d.ts"
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
   },
-  "files": [
-    "dist",
-    "package.json",
-    "README.md"
-  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/NeosiaNexus/super-tebex"
