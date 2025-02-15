@@ -2,26 +2,20 @@
   "name": "super-tebex",
   "version": "0.0.8",
   "description": "Package utilitaire pour intégrer facilement Tebex dans un projet React.",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
   "exports": {
-    ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
+    "import": "./dist/index.js",
+    "require": "./dist/index.cjs",
+    "default": "./dist/index.cjs"
   },
+  "files": ["dist", "package.json", "README.md"],
   "repository": {
     "type": "git",
     "url": "https://github.com/NeosiaNexus/super-tebex"
   },
-  "files": [
-    "dist",
-    "package.json",
-    "README.md"
-  ],
   "scripts": {
     "dev": "tsup src/index.ts --watch",
     "build": "tsup src/index.ts",
@@ -40,7 +34,6 @@
   "author": "NeosiaNexus",
   "license": "MIT",
   "dependencies": {
-    "ts-node": "^10.9.2",
     "tsup": "^8.3.6",
     "typescript": "^5.7.3"
   },
