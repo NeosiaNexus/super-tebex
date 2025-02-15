@@ -1,6 +1,6 @@
 {
   "name": "super-tebex",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Package utilitaire pour intégrer facilement Tebex dans un projet React.",
   "main": "dist/index.cjs",
   "module": "dist/index.js",
