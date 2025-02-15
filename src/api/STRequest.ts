@@ -29,7 +29,9 @@ class STRequest {
       );
     }
 
-    return response.json();
+    const responseJson = await response.json();
+
+    return responseJson.data;
   }
 
   private getRoute(route: STRequestRoute) {
