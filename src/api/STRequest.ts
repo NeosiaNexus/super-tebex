@@ -11,14 +11,13 @@ class STRequest {
     route: STRequestRoute = "HEADLESS",
   ): Promise<T> {
     const fullUrl = `${this.getRoute(route)}/${endpoint}`;
-    const headers: HeadersInit = Object.assign(
-      { "Content-Type": "application/json" },
-      headersContent,
-    );
 
     const response = await fetch(fullUrl, {
       method,
-      headers,
+      headers: new Headers({
+        "Content-Type": "application/json",
+        ...headersContent,
+      }),
       body: body ? JSON.stringify(body) : undefined,
     });
 
