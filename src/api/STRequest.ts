@@ -14,7 +14,7 @@ class STRequest {
 
     const headers = new Headers({
       "Content-Type": "application/json",
-      ...headersContent
+      ...headersContent,
     });
 
     console.log(fullUrl, method, errorMessage, body, headers, route);
