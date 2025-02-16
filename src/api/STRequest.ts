@@ -12,6 +12,8 @@ class STRequest {
   ): Promise<T> {
     const fullUrl = `${this.getRoute(route)}/${endpoint}`;
 
+    console.log(headersContent);
+
     const headers = new Headers({
       "Content-Type": "application/json",
       ...headersContent,
