@@ -12,12 +12,16 @@ class STRequest {
   ): Promise<T> {
     const fullUrl = `${this.getRoute(route)}/${endpoint}`;
 
+    const headers = new Headers({
+      "Content-Type": "application/json",
+      ...headersContent
+    });
+
+    console.log(fullUrl, method, errorMessage, body, headers, route);
+
     const response = await fetch(fullUrl, {
       method,
-      headers: new Headers({
-        "Content-Type": "application/json",
-        ...headersContent,
-      }),
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
 
