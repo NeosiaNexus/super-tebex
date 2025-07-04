@@ -1,5 +1,3 @@
-'use client';
-
 import { useCallback, useEffect, useState } from 'react';
 import type { Category } from 'tebex_headless';
 import categoriesService from '../services/categoriesService';
