@@ -1,0 +1,21 @@
+# Dossiers à ignorer
+/node_modules
+/dist
+/out
+/public
+/coverage
+/.vscode
+
+# Fichiers de config / log / env
+*.log
+*.lock
+*.tsbuildinfo
+*.snap
+.env.*
+.env
+
+# Assets
+*.svg
+
+# Autres fichiers que tu ne veux pas formater
+*.md
