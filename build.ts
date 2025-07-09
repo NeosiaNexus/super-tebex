@@ -4,7 +4,7 @@ import dts from 'bun-plugin-dts';
 const defaultBuildConfig: BuildConfig = {
   entrypoints: ['./src/index.ts'],
   outdir: './dist',
-  external: ['react', 'react-dom'],
+  external: ['react', 'react-dom', 'zustand', 'sonner', 'tebex_headless'],
   target: 'browser',
 };
 

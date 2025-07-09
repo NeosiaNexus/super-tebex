@@ -46,8 +46,8 @@
     "@testing-library/react": "^16.3.0",
     "@types/bun": "^1.2.18",
     "@types/jest": "^30.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.35.1",
-    "@typescript-eslint/parser": "^8.35.1",
+    "@typescript-eslint/eslint-plugin": "^8.36.0",
+    "@typescript-eslint/parser": "^8.36.0",
     "@vitejs/plugin-react": "^4.6.0",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
@@ -70,13 +70,12 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
-  "dependencies": {
-    "sonner": "^2.0.6",
-    "tebex_headless": "^1.15.1",
-    "zustand": "^5.0.6"
-  },
+  "dependencies": {},
   "peerDependencies": {
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.6",
+    "sonner": "^2.0.6",
+    "tebex_headless": "^1.15.1"
   }
 }
