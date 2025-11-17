@@ -17,7 +17,7 @@ interface UseBasketResult {
   ) => Promise<void>;
   removePackageFromBasket: (packageId: Package['id']) => Promise<void>;
   updateManualBasket: (basket: Basket | null) => void;
-  refetch: () => void;
+  refetch: () => Promise<void>;
 }
 
 const useBasket = (username: string | null): UseBasketResult => {
@@ -37,6 +37,7 @@ const useBasket = (username: string | null): UseBasketResult => {
 
   const fetchBasket = async (ident: string): Promise<void> => {
     setLoading(true);
+    setError(null);
     try {
       const data = await basketService.getBasket(ident);
       if (data.complete) {
@@ -101,16 +102,15 @@ const useBasket = (username: string | null): UseBasketResult => {
         variableData,
       );
 
-      updatedPromise.then(updated => {
-        setBasket(updated);
-        setError(null);
-      });
-
       toast.promise(updatedPromise, {
         loading: "Ajout de l'article dans votre panier...",
         success: 'Article ajouté avec succès !',
         error: "Une erreur est survenue lors de l'ajout de l'article dans votre panier",
       });
+
+      const updated = await updatedPromise;
+      setBasket(updated);
+      setError(null);
     } catch (err) {
       setError(err as Error);
     } finally {
@@ -154,8 +154,10 @@ const useBasket = (username: string | null): UseBasketResult => {
     }
   };
 
-  const refetch = (): void => {
-    if (basketIdent) void fetchBasket(basketIdent);
+  const refetch = async (): Promise<void> => {
+    if (basketIdent) {
+      await fetchBasket(basketIdent);
+    }
   };
 
   const updateManualBasket = (basket: Basket | null): void => {
