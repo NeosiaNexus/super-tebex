@@ -1,29 +1,38 @@
 import { TebexHeadless } from 'tebex_headless';
-import { vi } from 'vitest';
-import getTebex from '../tebexClient';
+import { beforeEach, describe, expect, it, Mock, vi } from 'vitest';
 
 vi.mock('tebex_headless', () => ({
-  TebexHeadless: vi.fn().mockImplementation(key => ({ _key: key })),
+  TebexHeadless: vi.fn().mockImplementation((key: string) => ({ _key: key })),
 }));
 
-describe('getTebex', () => {
+describe('initTebex / getTebex', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset le singleton
     vi.resetModules();
-    delete process.env.NEXT_PUBLIC_TEBEX_PUBLIC_KEY;
   });
 
-  it('should throw if NEXT_PUBLIC_TEBEX_PUBLIC_KEY is missing', async () => {
-    await expect(getTebex()).rejects.toThrow('Missing NEXT_PUBLIC_TEBEX_PUBLIC_KEY env variable');
+  it('should throw if getTebex is called before initTebex', async () => {
+    const { default: getTebex } = await import('../tebexClient');
+
+    expect(() => getTebex()).toThrowError(
+      'Tebex client not initialized. Call initTebex(publicKey) first.',
+    );
   });
 
-  it('should return the same instance on subsequent calls', async () => {
-    process.env.NEXT_PUBLIC_TEBEX_PUBLIC_KEY = 'public-key';
-    const first = await getTebex();
-    const second = await getTebex();
+  it('should create TebexHeadless once and return the same instance on subsequent calls', async () => {
+    const { default: initTebex } = await import('../initTebex');
+    const { default: getTebex } = await import('../tebexClient');
+
+    initTebex('public-key');
+
+    const first = getTebex();
+    const second = getTebex();
 
     expect(first).toBe(second);
-    expect(TebexHeadless).toHaveBeenCalledTimes(1);
+
+    const TebexHeadlessMock = TebexHeadless as unknown as Mock;
+
+    expect(TebexHeadlessMock).toHaveBeenCalledTimes(1);
+    expect(TebexHeadlessMock).toHaveBeenCalledWith('public-key');
   });
 });

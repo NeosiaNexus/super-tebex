@@ -21,16 +21,19 @@ interface UseBasketResult {
 }
 
 const useBasket = (username: string | null): UseBasketResult => {
-  const basketIdent = useShopBasketStore(s => s.basketIdent);
-  const setBasketIdent = useShopBasketStore(s => s.setBasketIdent);
-  const storeUsername = useShopUserStore(s => s.username);
-
   const [basket, setBasket] = useState<Basket | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
   const [isQuantityUpdating, setIsQuantityUpdating] = useState<boolean>(false);
 
-  const createBasket = useCreateBasket(username ?? storeUsername);
+  const basketIdent = useShopBasketStore(s => s.basketIdent);
+  const setBasketIdent = useShopBasketStore(s => s.setBasketIdent);
+  const storeUsername = useShopUserStore(s => s.username);
+  const effectiveName = username ?? storeUsername;
+
+  const createBasket = useCreateBasket(effectiveName);
+
+  const clearBasketIdent = useShopBasketStore(s => s.clearBasketIdent);
 
   const fetchBasket = async (ident: string): Promise<void> => {
     setLoading(true);
@@ -38,7 +41,8 @@ const useBasket = (username: string | null): UseBasketResult => {
       const data = await basketService.getBasket(ident);
       if (data.complete) {
         setBasket(null);
-        setBasketIdent('');
+        clearBasketIdent();
+        setError(null);
         return;
       }
       setBasket(data);
@@ -47,7 +51,7 @@ const useBasket = (username: string | null): UseBasketResult => {
     } catch (err) {
       setError(err as Error);
       setBasket(null);
-      setBasketIdent('');
+      clearBasketIdent();
     } finally {
       setLoading(false);
     }
@@ -63,7 +67,7 @@ const useBasket = (username: string | null): UseBasketResult => {
 
     try {
       setIsQuantityUpdating(true);
-      if (!username && !storeUsername) {
+      if (!effectiveName) {
         toast.error('Vous devez vous connecter pour ajouter des articles à votre panier');
         return;
       }
@@ -77,10 +81,8 @@ const useBasket = (username: string | null): UseBasketResult => {
           return;
         }
         setBasketIdent(created);
-        await fetchBasket(created);
+        // fetchBasket(created) si besoin de charger d'autres métadonnées
       } else {
-        await fetchBasket(basketIdent);
-
         created = basketIdent;
       }
 
@@ -91,18 +93,26 @@ const useBasket = (username: string | null): UseBasketResult => {
         return;
       }
 
-      const updated = basketService
-        .addPackageToBasket(created, packageId, quantity, type, variableData)
-        ?.then(updated => {
-          setBasket(updated);
-          refetch();
-        });
+      const updatedPromise = basketService.addPackageToBasket(
+        created,
+        packageId,
+        quantity,
+        type,
+        variableData,
+      );
 
-      toast.promise(updated, {
+      updatedPromise.then(updated => {
+        setBasket(updated);
+        setError(null);
+      });
+
+      toast.promise(updatedPromise, {
         loading: "Ajout de l'article dans votre panier...",
         success: 'Article ajouté avec succès !',
         error: "Une erreur est survenue lors de l'ajout de l'article dans votre panier",
       });
+    } catch (err) {
+      setError(err as Error);
     } finally {
       setIsQuantityUpdating(false);
     }
@@ -121,22 +131,24 @@ const useBasket = (username: string | null): UseBasketResult => {
         return;
       }
 
-      const updated = basketService
-        .removePackageFromBasket(
-          basketIdent,
-          packageId,
-          basket?.packages.find(p => p.id === packageId)?.in_basket.quantity ?? 0,
-        )
-        ?.then(updated => {
-          setBasket(updated);
-          refetch();
-        });
+      const updatedPromise = basketService.removePackageFromBasket(
+        basketIdent,
+        packageId,
+        basket?.packages.find(p => p.id === packageId)?.in_basket.quantity ?? 0,
+      );
 
-      toast.promise(updated, {
+      updatedPromise.then(updated => {
+        setBasket(updated);
+        setError(null);
+      });
+
+      toast.promise(updatedPromise, {
         loading: "Suppression de l'article de votre panier...",
         success: 'Article supprimé avec succès !',
         error: "Une erreur est survenue lors de la suppression de l'article de votre panier",
       });
+    } catch (err) {
+      setError(err as Error);
     } finally {
       setIsQuantityUpdating(false);
     }

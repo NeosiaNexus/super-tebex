@@ -1,7 +1,8 @@
 import { renderHook } from '@testing-library/react';
 import { toast } from 'sonner';
-import { beforeEach, describe, vi } from 'vitest';
-import useCreateBasket, { createBasketFlow } from '../useCreateBasket';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// --- Mocks ---
 
 vi.mock('sonner', () => ({
   toast: { error: vi.fn() },
@@ -19,7 +20,16 @@ vi.mock('../store/shopUiStore', () => ({
 vi.mock('../store', () => ({
   useShopBasketStore: vi.fn().mockImplementation(selector =>
     selector({
+      basketIdent: null,
       setBasketIdent: vi.fn(),
+      clearBasketIdent: vi.fn(),
+    }),
+  ),
+  useShopUserStore: vi.fn().mockImplementation(selector =>
+    selector({
+      username: '',
+      setUsername: vi.fn(),
+      clearUsername: vi.fn(),
     }),
   ),
 }));
@@ -30,18 +40,18 @@ vi.mock('../services', () => ({
   },
 }));
 
-describe('createBasketFlow', () => {
+describe('createBasketFlow / useCreateBasket', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.NEXT_PUBLIC_APP_URL = 'https://app.example.com';
-  });
-
-  afterEach(() => {
-    delete process.env.NEXT_PUBLIC_APP_URL;
   });
 
   describe('Success cases', () => {
     it('creates a basket and updates state', async () => {
+      const { default: initShopUrls } = await import('../../client/initShopUrls');
+      const { createBasketFlow } = await import('../useCreateBasket');
+
+      initShopUrls('https://app.example.com');
+
       const deps = {
         username: 'test',
         isCreatingBasket: false,
@@ -60,6 +70,11 @@ describe('createBasketFlow', () => {
     });
 
     it('completes in under 500ms', async () => {
+      const { default: initShopUrls } = await import('../../client/initShopUrls');
+      const { createBasketFlow } = await import('../useCreateBasket');
+
+      initShopUrls('https://app.example.com');
+
       const deps = {
         username: 'test',
         isCreatingBasket: false,
@@ -76,6 +91,11 @@ describe('createBasketFlow', () => {
 
   describe('Guard clauses', () => {
     it('returns null if already creating a basket', async () => {
+      const { default: initShopUrls } = await import('../../client/initShopUrls');
+      const { createBasketFlow } = await import('../useCreateBasket');
+
+      initShopUrls('https://app.example.com');
+
       const deps = {
         username: 'test',
         isCreatingBasket: true,
@@ -91,6 +111,11 @@ describe('createBasketFlow', () => {
     });
 
     it('ignores concurrent calls', async () => {
+      const { default: initShopUrls } = await import('../../client/initShopUrls');
+      const { createBasketFlow } = await import('../useCreateBasket');
+
+      initShopUrls('https://app.example.com');
+
       const deps = {
         username: 'test',
         isCreatingBasket: false,
@@ -110,6 +135,11 @@ describe('createBasketFlow', () => {
 
   describe('Error handling', () => {
     it('shows toast and returns null if basket has no ident', async () => {
+      const { default: initShopUrls } = await import('../../client/initShopUrls');
+      const { createBasketFlow } = await import('../useCreateBasket');
+
+      initShopUrls('https://app.example.com');
+
       const deps = {
         username: 'test',
         isCreatingBasket: false,
@@ -127,6 +157,11 @@ describe('createBasketFlow', () => {
     });
 
     it('shows toast if createBasket throws', async () => {
+      const { default: initShopUrls } = await import('../../client/initShopUrls');
+      const { createBasketFlow } = await import('../useCreateBasket');
+
+      initShopUrls('https://app.example.com');
+
       const deps = {
         username: 'test',
         isCreatingBasket: false,
@@ -147,8 +182,11 @@ describe('createBasketFlow', () => {
   });
 
   describe('URL handling', () => {
-    it('throws if NEXT_PUBLIC_APP_URL is not set', async () => {
-      delete process.env.NEXT_PUBLIC_APP_URL;
+    it('throws if shop URLs are not initialized', async () => {
+      // On repart d'un registre de modules propre
+      vi.resetModules();
+
+      const { createBasketFlow } = await import('../useCreateBasket');
 
       const deps = {
         username: 'test',
@@ -158,10 +196,22 @@ describe('createBasketFlow', () => {
         createBasket: vi.fn(),
       };
 
-      await expect(() => createBasketFlow(deps)).rejects.toThrow('NEXT_PUBLIC_APP_URL is not set');
+      await expect(createBasketFlow(deps)).rejects.toThrow(
+        'Shop URLs not initialized. Call initShopUrls(baseUrl, paths?: { complete?: string; cancel?: string }) first.',
+      );
     });
 
-    it('uses default env URLs if no props given', async () => {
+    it('uses configured shop URLs from initShopUrls', async () => {
+      vi.resetModules();
+
+      const { default: initShopUrls } = await import('../../client/initShopUrls');
+      const { createBasketFlow } = await import('../useCreateBasket');
+
+      initShopUrls('https://app.example.com', {
+        complete: '/custom-complete',
+        cancel: '/custom-cancel',
+      });
+
       const deps = {
         username: 'test',
         isCreatingBasket: false,
@@ -174,8 +224,8 @@ describe('createBasketFlow', () => {
 
       expect(deps.createBasket).toHaveBeenCalledWith({
         username: 'test',
-        completeUrl: 'https://app.example.com/shop/complete-purchase',
-        cancelUrl: 'https://app.example.com/shop/cancel-purchase',
+        completeUrl: 'https://app.example.com/custom-complete',
+        cancelUrl: 'https://app.example.com/custom-cancel',
         completeAutoRedirect: false,
         ipAddress: '',
       });
@@ -184,7 +234,13 @@ describe('createBasketFlow', () => {
 
   describe('useCreateBasket hook', () => {
     it('returns a callable function', async () => {
-      const { result } = renderHook(() => useCreateBasket());
+      const { default: initShopUrls } = await import('../../client/initShopUrls');
+      const { default: useCreateBasket } = await import('../useCreateBasket');
+
+      initShopUrls('https://app.example.com');
+
+      const { result } = renderHook(() => useCreateBasket(null));
+
       expect(typeof result.current).toBe('function');
       await result.current();
     });

@@ -1,15 +1,9 @@
 import { TebexHeadless } from 'tebex_headless';
+import { tebex } from './initTebex';
 
-let tebex: TebexHeadless | null = null;
-
-const getTebex = async (): Promise<TebexHeadless> => {
+const getTebex = (): TebexHeadless => {
   if (!tebex) {
-    const publicKey = process.env.NEXT_PUBLIC_TEBEX_PUBLIC_KEY;
-    if (!publicKey) {
-      throw new Error('Missing NEXT_PUBLIC_TEBEX_PUBLIC_KEY env variable');
-    }
-
-    tebex = new TebexHeadless(publicKey);
+    throw new Error('Tebex client not initialized. Call initTebex(publicKey) first.');
   }
   return tebex;
 };

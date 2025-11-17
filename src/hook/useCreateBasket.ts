@@ -1,11 +1,12 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { Basket } from 'tebex_headless';
+import { shopUrls } from '../client/initShopUrls';
 import { basketService } from '../services';
 import { useShopBasketStore, useShopUserStore } from '../store';
 import useShopUiStore from '../store/shopUiStore';
 
-interface GetShopUrlsResult {
+export interface GetShopUrlsResult {
   completeUrl: string;
   cancelUrl: string;
 }
@@ -82,13 +83,15 @@ const useCreateBasket = (username: string | null): (() => Promise<Basket | null>
 };
 
 const getShopUrls = (): GetShopUrlsResult => {
-  if (!process.env.NEXT_PUBLIC_APP_URL) {
-    throw new Error('NEXT_PUBLIC_APP_URL is not set');
+  if (!shopUrls) {
+    throw new Error(
+      'Shop URLs not initialized. Call initShopUrls(baseUrl, paths?: { complete?: string; cancel?: string }) first.',
+    );
   }
 
   return {
-    completeUrl: `${process.env.NEXT_PUBLIC_APP_URL}/shop/complete-purchase`,
-    cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/shop/cancel-purchase`,
+    completeUrl: shopUrls.completeUrl,
+    cancelUrl: shopUrls.cancelUrl,
   };
 };
 

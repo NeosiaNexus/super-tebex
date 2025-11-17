@@ -16,7 +16,7 @@ const useCategories = (options: GetCategories): UseCategoriesResult => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const fetchCategories = async (): Promise<void> => {
+  const fetchCategories = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
@@ -28,12 +28,11 @@ const useCategories = (options: GetCategories): UseCategoriesResult => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [options]);
 
   useEffect(() => {
-    fetchCategories();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    void fetchCategories();
+  }, [fetchCategories]);
 
   const getByName = useCallback(
     (name: string) => categories?.find(cat => cat.name.toLowerCase() === name.toLowerCase()),
