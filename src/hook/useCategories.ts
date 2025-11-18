@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Category } from 'tebex_headless';
 import categoriesService from '../services/categoriesService';
 import type { GetCategories } from '../types';
@@ -16,11 +16,17 @@ const useCategories = (options: GetCategories): UseCategoriesResult => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
+  const memoizedOptions = useMemo(
+    () => options,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [options.includePackages, options.basketIdent, options.ipAddress],
+  );
+
   const fetchCategories = useCallback(async (): Promise<void> => {
     setLoading(true);
     setError(null);
     try {
-      const data = await categoriesService.getCategories(options);
+      const data = await categoriesService.getCategories(memoizedOptions);
       setCategories(data);
     } catch (err) {
       setError(err as Error);
@@ -28,7 +34,7 @@ const useCategories = (options: GetCategories): UseCategoriesResult => {
     } finally {
       setLoading(false);
     }
-  }, [options]);
+  }, [memoizedOptions]);
 
   useEffect(() => {
     void fetchCategories();
