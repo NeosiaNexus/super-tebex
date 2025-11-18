@@ -266,6 +266,67 @@ describe('useBasket', () => {
     expect(result.current.basket).toBeNull();
   });
 
+  it('shows error toast when createBasket returns basket without ident', async () => {
+    basketStoreState.basketIdent = null;
+    userStoreState.username = 'player';
+
+    // Cas où createBasket retourne un panier avec ident null ou undefined (simule la ligne 91-95)
+    // On simule un cas où basketIdent serait falsy après assignation (protection défensive)
+    const createBasketFn = vi.fn().mockResolvedValue({ ident: null } as unknown as Basket);
+    mockedUseCreateBasket.mockReturnValue(createBasketFn);
+
+    const { result } = renderHook(() => useBasket(null));
+
+    await act(async () => {
+      await result.current.addPackageToBasket(42);
+    });
+
+    expect(mockedAddPackage).not.toHaveBeenCalled();
+    // Le code vérifie d'abord à la ligne 80, donc on voit ce message
+    expect(toast.error).toHaveBeenCalledWith(
+      'Une erreur est survenue lors de la création du panier',
+    );
+    expect(result.current.basket).toBeNull();
+  });
+
+  // Note: Les lignes 91-95 sont une protection défensive qui ne devrait normalement
+  // jamais être atteinte car basketIdent est soit null soit une chaîne non vide.
+  // Ce code est là pour gérer des cas edge improbables et améliorer la robustesse.
+
+  it('sets error when addPackageToBasket throws an exception', async () => {
+    basketStoreState.basketIdent = 'existing-basket';
+    userStoreState.username = 'player';
+
+    // Mock useCreateBasket pour éviter l'erreur "createBasket is not a function"
+    const createBasketFn = vi.fn().mockResolvedValue({ ident: 'basket-1' } as unknown as Basket);
+    mockedUseCreateBasket.mockReturnValue(createBasketFn);
+
+    // Mock getBasket pour éviter que le useEffect initial cause une erreur
+    mockedGetBasket.mockResolvedValueOnce({
+      ident: 'existing-basket',
+      complete: false,
+      packages: [],
+    } as unknown as Basket);
+
+    // Simuler une erreur lors de l'ajout du package (ligne 115)
+    mockedAddPackage.mockRejectedValue(new Error('Network error'));
+
+    const { result } = renderHook(() => useBasket(null));
+
+    // Attendre que le useEffect initial se termine
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await result.current.addPackageToBasket(42);
+    });
+
+    expect(result.current.error).toBeInstanceOf(Error);
+    expect(result.current.error?.message).toBe('Network error');
+    expect(mockedAddPackage).toHaveBeenCalled();
+  });
+
   it('uses existing basketIdent when adding a package', async () => {
     basketStoreState.basketIdent = 'existing-basket';
     userStoreState.username = 'player';
@@ -352,6 +413,50 @@ describe('useBasket', () => {
     expect(mockedRemovePackage).toHaveBeenCalledWith('basket-qty', 10, 3);
     expect(result.current.basket).toEqual(updatedBasket);
     expect(result.current.error).toBeNull();
+  });
+
+  it('sets error when removePackageFromBasket throws a synchronous exception', async () => {
+    basketStoreState.basketIdent = 'existing-basket';
+    userStoreState.username = 'player';
+
+    const fakeBasket: Basket = {
+      ident: 'existing-basket',
+      complete: false,
+      packages: [
+        {
+          id: 10,
+          in_basket: { quantity: 2 } as InBasket,
+        },
+      ],
+    } as Basket;
+
+    // Mock getBasket pour éviter que le useEffect ne déclenche un fetch
+    mockedGetBasket.mockResolvedValueOnce(fakeBasket);
+
+    // Simuler une erreur synchrone (pas asynchrone) pour tester la ligne 151
+    // Par exemple, si basketService.removePackageFromBasket lance une erreur synchrone
+    mockedRemovePackage.mockImplementation(() => {
+      throw new Error('Remove failed');
+    });
+
+    const { result } = renderHook(() => useBasket(null));
+
+    // Attendre que le useEffect initial se termine
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    act(() => {
+      result.current.updateManualBasket(fakeBasket);
+    });
+
+    await act(async () => {
+      await result.current.removePackageFromBasket(10);
+    });
+
+    expect(result.current.error).toBeInstanceOf(Error);
+    expect(result.current.error?.message).toBe('Remove failed');
+    expect(mockedRemovePackage).toHaveBeenCalled();
   });
 
   it('updateManualBasket overrides basket state', () => {
