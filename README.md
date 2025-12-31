@@ -1,471 +1,545 @@
-# @neosia-core/super-tebex
+# @neosia/tebex-nextjs
 
-SDK Tebex permettant une intégration facile dans un environnement React/Next.js. Cette bibliothèque fournit des hooks React et des stores Zustand pour gérer facilement les catégories, paniers et la création de commandes Tebex.
+Tebex Headless SDK optimized for Next.js App Router with TanStack Query and Zustand.
 
-## 📦 Installation
+## Features
+
+- **TanStack Query v5** - Automatic caching, retry, stale-while-revalidate
+- **Zustand v5** - Persisted client state (basket, user)
+- **TypeScript First** - Zero `any`, strict mode, exhaustive types
+- **Provider Pattern** - Single provider, granular hooks
+- **Error Codes** - i18n-friendly error handling with `TebexErrorCode`
+- **Optimistic Updates** - Instant UI feedback on basket mutations
+- **React Query DevTools** - Automatic in development mode
+
+## Installation
 
 ```bash
-npm install @neosia-core/super-tebex
-# ou
-yarn add @neosia-core/super-tebex
-# ou
-pnpm add @neosia-core/super-tebex
+npm install @neosia/tebex-nextjs
+# or
+yarn add @neosia/tebex-nextjs
+# or
+pnpm add @neosia/tebex-nextjs
+# or
+bun add @neosia/tebex-nextjs
 ```
 
 ### Peer Dependencies
 
-Cette bibliothèque nécessite les dépendances suivantes :
-
-- `react` ^18.3.1
-- `react-dom` ^18.3.1
-- `zustand` ^5.0.6
-- `sonner` ^2.0.6
-- `tebex_headless` ^1.15.1
-
 ```bash
-npm install zustand sonner tebex_headless
+npm install @tanstack/react-query zustand tebex_headless
 ```
 
-## 🚀 Initialisation dans Next.js
+| Dependency | Version |
+|------------|---------|
+| `react` | ^18.3.1 \|\| ^19.0.0 |
+| `react-dom` | ^18.3.1 \|\| ^19.0.0 |
+| `next` | ^14.0.0 \|\| ^15.0.0 (optional) |
+| `@tanstack/react-query` | ^5.0.0 |
+| `zustand` | ^5.0.0 |
+| `tebex_headless` | ^1.15.0 |
 
-### 1. Configuration initiale
+## Quick Start
 
-Créez un fichier de configuration (ex: `lib/tebex.ts`) :
+### 1. Setup Provider
 
-```typescript
-import { initTebex, initShopUrls } from '@neosia-core/super-tebex';
+Wrap your app with `TebexProvider` in your root layout:
 
-// Initialiser Tebex avec votre clé publique
-export function initializeTebex() {
-  const publicKey = process.env.NEXT_PUBLIC_TEBEX_PUBLIC_KEY;
-  
-  if (!publicKey) {
-    throw new Error('NEXT_PUBLIC_TEBEX_PUBLIC_KEY is not defined');
-  }
-
-  // Initialiser l'instance Tebex
-  initTebex(publicKey);
-
-  // Initialiser les URLs du shop (utilisées pour la création de panier)
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://votre-domaine.com';
-  
-  initShopUrls(baseUrl, {
-    complete: '/shop/complete-purchase',  // Optionnel, défaut: /shop/complete-purchase
-    cancel: '/shop/cancel-purchase',      // Optionnel, défaut: /shop/cancel-purchase
-  });
-}
-```
-
-### 2. Initialisation dans `app/layout.tsx` (App Router)
-
-```typescript
-import { useEffect } from 'react';
-import { Toaster } from 'sonner';
-import { initializeTebex } from '@/lib/tebex';
+```tsx
+// app/layout.tsx
+import { TebexProvider } from '@neosia/tebex-nextjs';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    initializeTebex();
-  }, []);
-
   return (
-    <html lang="fr">
+    <html lang="en">
       <body>
-        {children}
-        <Toaster position="top-right" />
+        <TebexProvider
+          config={{
+            publicKey: process.env.NEXT_PUBLIC_TEBEX_KEY!,
+            baseUrl: process.env.NEXT_PUBLIC_BASE_URL!,
+            urls: {
+              complete: '/shop/complete', // optional, default: /shop/complete
+              cancel: '/shop/cancel',     // optional, default: /shop/cancel
+            },
+            onError: (error) => {
+              // Global error handler (optional)
+              console.error(`Tebex Error [${error.code}]:`, error.message);
+            },
+          }}
+        >
+          {children}
+        </TebexProvider>
       </body>
     </html>
   );
 }
 ```
 
-### 3. Initialisation dans `pages/_app.tsx` (Pages Router)
+### 2. Use Hooks
 
-```typescript
-import type { AppProps } from 'next/app';
-import { useEffect } from 'react';
-import { Toaster } from 'sonner';
-import { initializeTebex } from '@/lib/tebex';
+```tsx
+'use client';
 
-export default function App({ Component, pageProps }: AppProps) {
-  useEffect(() => {
-    initializeTebex();
-  }, []);
+import { useCategories, useBasket, useUser } from '@neosia/tebex-nextjs';
 
-  return (
-    <>
-      <Component {...pageProps} />
-      <Toaster position="top-right" />
-    </>
-  );
-}
-```
+export function Shop() {
+  const { username, setUsername } = useUser();
+  const { categories, isLoading } = useCategories({ includePackages: true });
+  const { addPackage, itemCount, isAddingPackage } = useBasket();
 
-## 📚 Hooks disponibles
-
-### `useBasket`
-
-Hook principal pour gérer le panier d'achat.
-
-```typescript
-import { useBasket } from '@neosia-core/super-tebex';
-
-function BasketComponent() {
-  // Le username peut venir du store global ou être passé directement
-  const username = useShopUserStore(s => s.username);
-  const { basket, loading, error, addPackageToBasket, removePackageFromBasket, refetch } = useBasket(username);
-
-  if (loading) {
-    return <div>Chargement du panier...</div>;
-  }
-
-  if (error) {
-    return <div>Erreur: {error.message}</div>;
-  }
-
-  if (!basket) {
-    return <div>Votre panier est vide</div>;
-  }
+  if (isLoading) return <div>Loading...</div>;
 
   return (
     <div>
-      <h2>Votre panier</h2>
-      <ul>
-        {basket.packages.map(pkg => (
-          <li key={pkg.id}>
-            {pkg.name} - Quantité: {pkg.in_basket.quantity}
-            <button onClick={() => removePackageFromBasket(pkg.id)}>
-              Supprimer
+      <p>Cart: {itemCount} items</p>
+      {categories?.map(category => (
+        <div key={category.id}>
+          <h2>{category.name}</h2>
+          {category.packages?.map(pkg => (
+            <button
+              key={pkg.id}
+              onClick={() => addPackage({ packageId: pkg.id })}
+              disabled={!username || isAddingPackage}
+            >
+              Add {pkg.name} - {pkg.price}
             </button>
-          </li>
-        ))}
-      </ul>
-      <button onClick={() => addPackageToBasket(123, 1)}>
-        Ajouter un article
-      </button>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
 ```
 
-#### API
+## Available Hooks
 
-```typescript
-interface UseBasketResult {
-  basket: Basket | null;          // Panier actuel
-  loading: boolean;                // État de chargement
-  error: Error | null;             // Erreur éventuelle
-  addPackageToBasket: (
-    packageId: number,
-    quantity?: number,
-    type?: PackageType,
-    variableData?: Record<string, string>
-  ) => Promise<void>;
-  removePackageFromBasket: (packageId: number) => Promise<void>;
-  updateManualBasket: (basket: Basket | null) => void;
-  refetch: () => Promise<void>;
+### Data Fetching Hooks
+
+| Hook | Description |
+|------|-------------|
+| `useCategories()` | Fetch all categories (with optional packages) |
+| `useCategory(id)` | Fetch a single category by ID |
+| `usePackages()` | Fetch all packages |
+| `usePackage(id)` | Fetch a single package by ID |
+| `useWebstore()` | Fetch webstore info (name, currency, domain) |
+
+### Basket Management
+
+| Hook | Description |
+|------|-------------|
+| `useBasket()` | Full basket management with optimistic updates |
+| `useCheckout()` | Launch Tebex.js checkout modal |
+| `useCoupons()` | Apply/remove coupon codes |
+| `useGiftCards()` | Apply/remove gift cards |
+| `useCreatorCodes()` | Apply/remove creator codes |
+| `useGiftPackage()` | Gift a package to another user |
+
+### User Management
+
+| Hook | Description |
+|------|-------------|
+| `useUser()` | Username management (persisted in localStorage) |
+
+## Hook Examples
+
+### useBasket
+
+```tsx
+const {
+  basket,           // Basket | null
+  packages,         // BasketPackage[]
+  basketIdent,      // string | null
+
+  // Loading states
+  isLoading,
+  isFetching,
+  isAddingPackage,
+  isRemovingPackage,
+  isUpdatingQuantity,
+
+  // Error handling
+  error,            // TebexError | null
+  errorCode,        // TebexErrorCode | null
+
+  // Actions
+  addPackage,       // (params: AddPackageParams) => Promise<void>
+  removePackage,    // (packageId: number) => Promise<void>
+  updateQuantity,   // (params: UpdateQuantityParams) => Promise<void>
+  clearBasket,      // () => void
+  refetch,          // () => Promise<...>
+
+  // Computed
+  itemCount,        // number
+  total,            // number
+  isEmpty,          // boolean
+} = useBasket();
+
+// Add package with options
+await addPackage({
+  packageId: 123,
+  quantity: 2,
+  type: 'single',  // optional: 'single' | 'subscription'
+  variableData: { server: 'survival' },  // optional
+});
+```
+
+### useCategories
+
+```tsx
+const {
+  categories,  // Category[] | null
+  data,        // same as categories
+  isLoading,
+  isFetching,
+  error,
+  errorCode,
+  refetch,
+
+  // Helpers
+  getByName,   // (name: string) => Category | undefined
+  getById,     // (id: number) => Category | undefined
+} = useCategories({
+  includePackages: true,  // default: true
+  enabled: true,          // default: true
+});
+```
+
+### useCheckout
+
+```tsx
+const {
+  launch,       // () => Promise<void>
+  isLaunching,
+  error,
+  errorCode,
+  canCheckout,  // boolean - true if basket has items
+  checkoutUrl,  // string | null - direct checkout URL
+} = useCheckout({
+  onSuccess: () => console.log('Payment complete!'),
+  onError: (error) => console.error(error),
+  onClose: () => console.log('Checkout closed'),
+});
+
+// Requires Tebex.js script in your page
+// <script src="https://js.tebex.io/v/checkout.js" />
+```
+
+### useUser
+
+```tsx
+const {
+  username,        // string | null
+  setUsername,     // (username: string) => void
+  clearUsername,   // () => void
+  isAuthenticated, // boolean
+} = useUser();
+```
+
+### useCoupons
+
+```tsx
+const {
+  coupons,     // Code[]
+  apply,       // (code: string) => Promise<void>
+  remove,      // (code: string) => Promise<void>
+  isApplying,
+  isRemoving,
+  error,
+  errorCode,
+} = useCoupons();
+```
+
+## Error Handling
+
+All hooks expose `error` (TebexError) and `errorCode` (TebexErrorCode) for i18n-friendly error handling:
+
+```tsx
+import { TebexErrorCode } from '@neosia/tebex-nextjs';
+
+const { error, errorCode } = useBasket();
+
+// Use error codes for translations
+const errorMessages: Record<TebexErrorCode, string> = {
+  [TebexErrorCode.NOT_AUTHENTICATED]: 'Please log in first',
+  [TebexErrorCode.BASKET_NOT_FOUND]: 'Your cart has expired',
+  [TebexErrorCode.PACKAGE_OUT_OF_STOCK]: 'Item is out of stock',
+  // ...
+};
+
+if (errorCode) {
+  toast.error(errorMessages[errorCode] ?? 'An error occurred');
 }
 ```
 
-### `useCategories`
+### Available Error Codes
 
-Hook pour récupérer et gérer les catégories de produits.
+| Category | Codes |
+|----------|-------|
+| Provider | `PROVIDER_NOT_FOUND`, `INVALID_CONFIG` |
+| Auth | `NOT_AUTHENTICATED`, `INVALID_USERNAME` |
+| Basket | `BASKET_NOT_FOUND`, `BASKET_CREATION_FAILED`, `BASKET_EXPIRED` |
+| Package | `PACKAGE_NOT_FOUND`, `PACKAGE_OUT_OF_STOCK`, `PACKAGE_ALREADY_OWNED`, `INVALID_QUANTITY` |
+| Category | `CATEGORY_NOT_FOUND` |
+| Coupon | `COUPON_INVALID`, `COUPON_EXPIRED`, `COUPON_ALREADY_USED` |
+| Gift Card | `GIFTCARD_INVALID`, `GIFTCARD_INSUFFICIENT_BALANCE` |
+| Creator Code | `CREATOR_CODE_INVALID` |
+| Checkout | `CHECKOUT_FAILED`, `CHECKOUT_CANCELLED` |
+| Network | `NETWORK_ERROR`, `TIMEOUT`, `RATE_LIMITED` |
+| Unknown | `UNKNOWN` |
 
-```typescript
-import { useCategories } from '@neosia-core/super-tebex';
+## TypeScript
 
-function CategoriesComponent() {
-  const { categories, loading, error, getByName, refetch } = useCategories({
+All types are exported:
+
+```tsx
+import type {
+  // Config
+  TebexConfig,
+  TebexUrls,
+
+  // Hook Returns
+  UseBasketReturn,
+  UseCategoriesReturn,
+  UseCheckoutReturn,
+  // ... all hook return types
+
+  // Tebex API types
+  Basket,
+  BasketPackage,
+  Category,
+  Package,
+  Webstore,
+
+  // Utilities
+  Result,
+  TebexError,
+  TebexErrorCode,
+} from '@neosia/tebex-nextjs';
+
+// Type guards
+import { isTebexError, isSuccess, isError, isDefined } from '@neosia/tebex-nextjs';
+```
+
+## Migration from v2
+
+### Breaking Changes
+
+| v2 | v3 | Migration |
+|----|-----|-----------|
+| `initTebex(key)` | `<TebexProvider config={{...}}>` | Wrap app with Provider |
+| `initShopUrls(url)` | `config.baseUrl` + `config.urls` | Pass in config |
+| `useBasket(username)` | `useBasket()` + `useUser()` | User is separate |
+| `error.message` (FR) | `error.code` | Translate codes yourself |
+| `sonner` peer dep | Removed | Handle toasts yourself |
+| `useShopUserStore` | `useUserStore` | Renamed |
+| `useShopBasketStore` | `useBasketStore` | Renamed |
+
+### Migration Example
+
+**Before (v2):**
+
+```tsx
+// lib/tebex.ts
+initTebex(process.env.NEXT_PUBLIC_TEBEX_KEY);
+initShopUrls('https://mysite.com');
+
+// Component
+const username = useShopUserStore(s => s.username);
+const { basket, addPackageToBasket, error } = useBasket(username);
+
+if (error) toast.error(error.message); // French message
+```
+
+**After (v3):**
+
+```tsx
+// app/layout.tsx
+<TebexProvider
+  config={{
+    publicKey: process.env.NEXT_PUBLIC_TEBEX_KEY!,
+    baseUrl: 'https://mysite.com',
+    onError: (err) => toast.error(t(`errors.${err.code}`)),
+  }}
+>
+  {children}
+</TebexProvider>
+
+// Component
+const { username } = useUser();
+const { basket, addPackage, errorCode } = useBasket();
+
+// Errors handled by onError callback or manually with errorCode
+```
+
+## Complete Example
+
+```tsx
+'use client';
+
+import { useCategories, useBasket, useUser, useCheckout } from '@neosia/tebex-nextjs';
+import { useState } from 'react';
+
+export default function ShopPage() {
+  const [input, setInput] = useState('');
+
+  // User
+  const { username, setUsername, clearUsername } = useUser();
+
+  // Categories
+  const { categories, isLoading: categoriesLoading } = useCategories({
     includePackages: true,
   });
 
-  if (loading) {
-    return <div>Chargement des catégories...</div>;
-  }
+  // Basket
+  const {
+    basket,
+    packages,
+    addPackage,
+    removePackage,
+    itemCount,
+    total,
+    isAddingPackage,
+    isEmpty,
+  } = useBasket();
 
-  if (error) {
-    return <div>Erreur: {error.message}</div>;
-  }
+  // Checkout
+  const { launch, canCheckout, isLaunching } = useCheckout({
+    onSuccess: () => alert('Thank you for your purchase!'),
+  });
 
-  return (
-    <div>
-      <h2>Catégories</h2>
-      <button onClick={() => refetch()}>Actualiser</button>
-      <ul>
-        {categories?.map(category => (
-          <li key={category.id}>
-            <h3>{category.name}</h3>
-            <p>{category.description}</p>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-```
-
-#### API
-
-```typescript
-interface UseCategoriesResult {
-  categories: Category[] | null;
-  loading: boolean;
-  error: Error | null;
-  getByName: (name: string) => Category | undefined;
-  refetch: () => Promise<void>;
-}
-```
-
-### `useCreateBasket`
-
-Hook pour créer un nouveau panier (utilisé en interne par `useBasket`).
-
-```typescript
-import { useCreateBasket } from '@neosia-core/super-tebex';
-
-function CreateBasketButton() {
-  const username = useShopUserStore(s => s.username);
-  const createBasket = useCreateBasket(username);
-
-  const handleCreate = async () => {
-    const basket = await createBasket();
-    if (basket) {
-      console.log('Panier créé:', basket.ident);
+  // Login handler
+  const handleLogin = () => {
+    if (input.trim()) {
+      setUsername(input.trim());
+      setInput('');
     }
   };
 
-  return <button onClick={handleCreate}>Créer un panier</button>;
-}
-```
-
-## 🗄️ Stores Zustand
-
-### `useShopUserStore`
-
-Store pour gérer le nom d'utilisateur (persisté dans localStorage).
-
-```typescript
-import { useShopUserStore } from '@neosia-core/super-tebex';
-
-function UserProfile() {
-  const username = useShopUserStore(s => s.username);
-  const setUsername = useShopUserStore(s => s.setUsername);
-  const clearUsername = useShopUserStore(s => s.clearUsername);
-
-  return (
-    <div>
-      {username ? (
-        <>
-          <p>Connecté en tant que: {username}</p>
-          <button onClick={clearUsername}>Déconnexion</button>
-        </>
-      ) : (
-        <button onClick={() => setUsername('Player123')}>Se connecter</button>
-      )}
-    </div>
-  );
-}
-```
-
-### `useShopBasketStore`
-
-Store pour gérer l'identifiant du panier (persisté dans localStorage).
-
-```typescript
-import { useShopBasketStore } from '@neosia-core/super-tebex';
-
-function BasketStatus() {
-  const basketIdent = useShopBasketStore(s => s.basketIdent);
-  const clearBasketIdent = useShopBasketStore(s => s.clearBasketIdent);
-
-  return (
-    <div>
-      {basketIdent ? (
-        <>
-          <p>Panier actif: {basketIdent}</p>
-          <button onClick={clearBasketIdent}>Vider le panier</button>
-        </>
-      ) : (
-        <p>Aucun panier actif</p>
-      )}
-    </div>
-  );
-}
-```
-
-### `useShopUiStore`
-
-Store pour gérer les états d'interface utilisateur (loading, etc.).
-
-```typescript
-import { useShopUiStore } from '@neosia-core/super-tebex';
-
-function LoadingIndicator() {
-  const isGlobalLoading = useShopUiStore(s => s.isGlobalLoading);
-  const isCreatingBasket = useShopUiStore(s => s.isCreatingBasket);
-
-  if (isGlobalLoading || isCreatingBasket) {
-    return <div className="spinner">Chargement...</div>;
-  }
-
-  return null;
-}
-```
-
-## 💡 Exemples complets
-
-### Exemple : Page de boutique complète
-
-```typescript
-'use client';
-
-import { useCategories, useBasket, useShopUserStore } from '@neosia-core/super-tebex';
-
-export default function ShopPage() {
-  const username = useShopUserStore(s => s.username);
-  const { categories, loading: categoriesLoading } = useCategories({ includePackages: true });
-  const { basket, loading: basketLoading, addPackageToBasket, removePackageFromBasket } = useBasket(username);
-
-  if (categoriesLoading || basketLoading) {
-    return <div>Chargement...</div>;
+  if (categoriesLoading) {
+    return <div>Loading store...</div>;
   }
 
   return (
-    <div className="shop-container">
-      <aside>
-        <h2>Panier</h2>
-        {basket ? (
-          <ul>
-            {basket.packages.map(pkg => (
-              <li key={pkg.id}>
-                {pkg.name} x{pkg.in_basket.quantity}
-                <button onClick={() => removePackageFromBasket(pkg.id)}>Retirer</button>
-              </li>
-            ))}
-          </ul>
+    <div className="container">
+      {/* Auth Section */}
+      <header>
+        {username ? (
+          <div>
+            <span>Welcome, {username}</span>
+            <button onClick={clearUsername}>Logout</button>
+          </div>
         ) : (
-          <p>Panier vide</p>
+          <div>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Enter username"
+            />
+            <button onClick={handleLogin}>Login</button>
+          </div>
         )}
-      </aside>
+      </header>
 
       <main>
-        <h1>Boutique</h1>
-        {categories?.map(category => (
-          <section key={category.id}>
-            <h2>{category.name}</h2>
-            {category.packages?.map(pkg => (
-              <div key={pkg.id} className="product-card">
-                <h3>{pkg.name}</h3>
-                <p>{pkg.description}</p>
-                <p className="price">{pkg.price.display}</p>
-                <button 
-                  onClick={() => addPackageToBasket(pkg.id, 1)}
-                  disabled={!username}
-                >
-                  Ajouter au panier
-                </button>
+        {/* Products */}
+        <section>
+          <h1>Products</h1>
+          {categories?.map(category => (
+            <div key={category.id}>
+              <h2>{category.name}</h2>
+              <div className="grid">
+                {category.packages?.map(pkg => (
+                  <div key={pkg.id} className="card">
+                    <h3>{pkg.name}</h3>
+                    <p>{pkg.price}</p>
+                    <button
+                      onClick={() => addPackage({ packageId: pkg.id })}
+                      disabled={!username || isAddingPackage}
+                    >
+                      {isAddingPackage ? 'Adding...' : 'Add to Cart'}
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
-          </section>
-        ))}
+            </div>
+          ))}
+        </section>
+
+        {/* Cart */}
+        <aside>
+          <h2>Cart ({itemCount})</h2>
+          {isEmpty ? (
+            <p>Your cart is empty</p>
+          ) : (
+            <>
+              <ul>
+                {packages.map(pkg => (
+                  <li key={pkg.id}>
+                    {pkg.name} x{pkg.in_basket.quantity}
+                    <button onClick={() => removePackage(pkg.id)}>Remove</button>
+                  </li>
+                ))}
+              </ul>
+              <p>Total: {basket?.base_price}</p>
+              <button
+                onClick={launch}
+                disabled={!canCheckout || isLaunching}
+              >
+                {isLaunching ? 'Loading...' : 'Checkout'}
+              </button>
+            </>
+          )}
+        </aside>
       </main>
     </div>
   );
 }
 ```
 
-### Exemple : Composant de connexion avec gestion d'utilisateur
+## Advanced Usage
 
-```typescript
-'use client';
+### Custom QueryClient
 
-import { useState } from 'react';
-import { useShopUserStore, useBasket } from '@neosia-core/super-tebex';
+```tsx
+import { QueryClient } from '@tanstack/react-query';
+import { TebexProvider } from '@neosia/tebex-nextjs';
 
-export default function LoginForm() {
-  const [input, setInput] = useState('');
-  const username = useShopUserStore(s => s.username);
-  const setUsername = useShopUserStore(s => s.setUsername);
-  const clearUsername = useShopUserStore(s => s.clearUsername);
-  const { basket, refetch } = useBasket(username);
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000, // 30 seconds
+    },
+  },
+});
 
-  const handleLogin = () => {
-    if (input.trim()) {
-      setUsername(input.trim());
-      // Recharger le panier après connexion
-      setTimeout(() => refetch(), 100);
-    }
-  };
-
-  const handleLogout = () => {
-    clearUsername();
-    setInput('');
-  };
-
-  if (username) {
-    return (
-      <div>
-        <p>Connecté: {username}</p>
-        {basket && <p>Articles dans le panier: {basket.packages.length}</p>}
-        <button onClick={handleLogout}>Déconnexion</button>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <input
-        type="text"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Nom d'utilisateur"
-      />
-      <button onClick={handleLogin}>Se connecter</button>
-    </div>
-  );
-}
+<TebexProvider config={config} queryClient={queryClient}>
+  {children}
+</TebexProvider>
 ```
 
-## 🔔 Notifications (Toasts)
+### Direct Store Access
 
-La bibliothèque utilise `sonner` pour afficher des notifications. Assurez-vous d'avoir le composant `<Toaster />` dans votre application (voir section Initialisation).
+```tsx
+import { useBasketStore, useUserStore } from '@neosia/tebex-nextjs';
 
-Les notifications sont automatiquement affichées pour :
-- Ajout/suppression d'articles au panier
-- Erreurs lors de la création du panier
-- Erreurs de connexion
-
-## 📝 Types TypeScript
-
-Tous les types sont exportés depuis la bibliothèque :
-
-```typescript
-import type { Basket, Category, Package, PackageType } from '@neosia-core/super-tebex';
+// Access stores directly (outside of hooks)
+const basketIdent = useBasketStore(state => state.basketIdent);
+const username = useUserStore(state => state.username);
 ```
 
-## 🐛 Gestion des erreurs
+### Query Keys
 
-Tous les hooks retournent un objet `error` que vous pouvez vérifier :
+```tsx
+import { tebexKeys } from '@neosia/tebex-nextjs';
+import { useQueryClient } from '@tanstack/react-query';
 
-```typescript
-const { basket, error, loading } = useBasket(username);
+const queryClient = useQueryClient();
 
-useEffect(() => {
-  if (error) {
-    console.error('Erreur panier:', error);
-    // Gérer l'erreur (afficher un message, logger, etc.)
-  }
-}, [error]);
+// Invalidate specific queries
+queryClient.invalidateQueries({ queryKey: tebexKeys.categories() });
+queryClient.invalidateQueries({ queryKey: tebexKeys.basket(basketIdent) });
 ```
 
-## 🔄 Persistance
+## License
 
-Les stores `useShopUserStore` et `useShopBasketStore` sont automatiquement persistés dans le `localStorage`, permettant de conserver l'état entre les sessions.
-
-## 📚 API Reference
-
-Pour plus de détails sur les types et interfaces, consultez les définitions TypeScript dans `dist/index.d.ts`.
-
-## 🤝 Contribution
-
-Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou une pull request.
+MIT

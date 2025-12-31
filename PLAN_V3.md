@@ -981,6 +981,8 @@ export function useCoupons() {
 
 ## Phase 3: Tests avec MSW
 
+> **⚠️ Règle importante:** Les tests basés sur le timing (setTimeout, délais, durées d'exécution) ne doivent **pas** être implémentés car ils sont trop instables et produisent des faux positifs/négatifs selon la charge du système.
+
 ### 3.1 Setup MSW
 
 **Fichier:** `__tests__/mocks/handlers.ts`
@@ -1396,17 +1398,17 @@ const { basket, addPackage, errorCode } = useBasket();
   - [x] Tests tous hooks
   - [x] Coverage >= 90% (actuellement 93.73%)
 
-- [ ] Phase 4: CI/CD
+- [x] Phase 4: CI/CD
   - [x] GitHub Actions CI (quality.yml)
-  - [ ] GitHub Actions Release (trusted publishing)
-  - [ ] Configurer npm trusted publishing
+  - [x] GitHub Actions Release (trusted publishing)
+  - [ ] Configurer npm trusted publishing (action manuelle sur npm)
   - [x] Verifier que `bun run typecheck` passe sans erreur
   - [x] Verifier zero `any` avec ESLint
 
-- [ ] Phase 5: Documentation
-  - [ ] README.md complet
-  - [ ] Migration guide
-  - [ ] Exemples Next.js App Router
+- [x] Phase 5: Documentation
+  - [x] README.md complet
+  - [x] Migration guide
+  - [x] Exemples Next.js App Router
 
 ---
 
