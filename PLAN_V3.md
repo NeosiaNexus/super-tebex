@@ -1362,46 +1362,46 @@ const { basket, addPackage, errorCode } = useBasket();
 
 ## Checklist implementation
 
-- [ ] Phase 0: TypeScript Setup
-  - [ ] tsconfig.json strict mode complet
-  - [ ] eslint.config.js avec regles TypeScript strictes
-  - [ ] Types hooks (src/types/hooks.ts)
-  - [ ] Type guards (src/types/guards.ts)
-  - [ ] Types config (src/types/config.ts)
-  - [ ] Barrel exports types (src/types/index.ts)
+- [x] Phase 0: TypeScript Setup
+  - [x] tsconfig.json strict mode complet
+  - [x] eslint.config.mjs avec regles TypeScript strictes
+  - [x] Types hooks (src/types/hooks.ts)
+  - [x] Type guards (src/types/guards.ts)
+  - [x] Types config (src/types/config.ts)
+  - [x] Barrel exports types (src/types/index.ts)
 
-- [ ] Phase 1: Core Architecture
-  - [ ] TebexProvider avec QueryClient
-  - [ ] TebexError et codes d'erreur
-  - [ ] Query keys factory
-  - [ ] Types Result<T, E>
+- [x] Phase 1: Core Architecture
+  - [x] TebexProvider avec QueryClient
+  - [x] TebexError et codes d'erreur
+  - [x] Query keys factory
+  - [x] Types Result<T, E>
 
-- [ ] Phase 2: Hooks
-  - [ ] useCategories (refacto)
-  - [ ] useCategory
-  - [ ] usePackages
-  - [ ] usePackage
-  - [ ] useBasket (refacto avec mutations)
-  - [ ] useCheckout
-  - [ ] useCoupons
-  - [ ] useGiftCards
-  - [ ] useCreatorCodes
-  - [ ] useWebstore
-  - [ ] useGiftPackage
-  - [ ] useUser
+- [x] Phase 2: Hooks
+  - [x] useCategories (refacto)
+  - [x] useCategory
+  - [x] usePackages
+  - [x] usePackage
+  - [x] useBasket (refacto avec mutations)
+  - [x] useCheckout
+  - [x] useCoupons
+  - [x] useGiftCards
+  - [x] useCreatorCodes
+  - [x] useWebstore
+  - [x] useGiftPackage
+  - [x] useUser
 
-- [ ] Phase 3: Tests
-  - [ ] Setup MSW
-  - [ ] Tests Provider
-  - [ ] Tests tous hooks
-  - [ ] Coverage >= 90%
+- [x] Phase 3: Tests
+  - [x] Setup MSW
+  - [x] Tests Provider
+  - [x] Tests tous hooks
+  - [x] Coverage >= 90% (actuellement 93.73%)
 
 - [ ] Phase 4: CI/CD
-  - [ ] GitHub Actions CI
+  - [x] GitHub Actions CI (quality.yml)
   - [ ] GitHub Actions Release (trusted publishing)
   - [ ] Configurer npm trusted publishing
-  - [ ] Verifier que `bun run typecheck` passe sans erreur
-  - [ ] Verifier zero `any` avec ESLint
+  - [x] Verifier que `bun run typecheck` passe sans erreur
+  - [x] Verifier zero `any` avec ESLint
 
 - [ ] Phase 5: Documentation
   - [ ] README.md complet

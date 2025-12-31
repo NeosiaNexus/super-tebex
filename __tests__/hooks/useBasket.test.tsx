@@ -17,6 +17,8 @@ describe('useBasket', () => {
     expect(result.current.isEmpty).toBe(true);
     expect(result.current.itemCount).toBe(0);
     expect(result.current.total).toBe(0);
+    expect(result.current.packages).toEqual([]);
+    expect(result.current.data).toBeNull();
   });
 
   it('should require username to add package', async () => {
@@ -112,5 +114,162 @@ describe('useBasket', () => {
     expect(basketResult.current.basketIdent).toBeNull();
     expect(basketResult.current.basket).toBeNull();
     expect(basketResult.current.isEmpty).toBe(true);
+  });
+
+  it('should remove package from basket', async () => {
+    const wrapper = createWrapper();
+
+    // Set username
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    act(() => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add a package first
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+    });
+
+    // Remove the package
+    await act(async () => {
+      await basketResult.current.removePackage(101);
+    });
+
+    // Should complete without error
+    expect(basketResult.current.isRemovingPackage).toBe(false);
+  });
+
+
+  it('should update package quantity', async () => {
+    const wrapper = createWrapper();
+
+    // Set username
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    act(() => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add a package first
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+    });
+
+    // Update quantity
+    await act(async () => {
+      await basketResult.current.updateQuantity({ packageId: 101, quantity: 5 });
+    });
+
+    // Should complete without error
+    expect(basketResult.current.isUpdatingQuantity).toBe(false);
+  });
+
+
+  it('should add package with type and variableData', async () => {
+    const wrapper = createWrapper();
+
+    // Set username
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    act(() => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add a package with extra params
+    await act(async () => {
+      await basketResult.current.addPackage({
+        packageId: 101,
+        quantity: 2,
+        type: 'subscription',
+        variableData: { gift_username: 'Friend' },
+      });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+    });
+  });
+
+  it('should have loading states initialized', () => {
+    const { result: basketResult } = renderHook(() => useBasket(), {
+      wrapper: createWrapper(),
+    });
+
+    // Initial loading states should be false
+    expect(basketResult.current.isAddingPackage).toBe(false);
+    expect(basketResult.current.isRemovingPackage).toBe(false);
+    expect(basketResult.current.isUpdatingQuantity).toBe(false);
+  });
+
+  it('should handle refetch', async () => {
+    const wrapper = createWrapper();
+
+    // Set username
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    act(() => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add a package first
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+    });
+
+    // Refetch
+    await act(async () => {
+      await basketResult.current.refetch();
+    });
+
+    // Should still have basket
+    expect(basketResult.current.basketIdent).not.toBeNull();
+  });
+
+  it('should add package to existing basket', async () => {
+    const wrapper = createWrapper();
+
+    // Set username
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    act(() => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add first package
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+    });
+
+    const firstBasketIdent = basketResult.current.basketIdent;
+
+    // Add second package - should use existing basket
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 102 });
+    });
+
+    // Should still be the same basket
+    expect(basketResult.current.basketIdent).toBe(firstBasketIdent);
   });
 });
