@@ -6,9 +6,6 @@
   "printWidth": 100,
   "bracketSpacing": true,
   "arrowParens": "avoid",
-  "plugins": ["prettier-plugin-organize-imports", "prettier-plugin-tailwindcss"],
-  "useTabs": false,
-  "tailwindStylesheet": "./src/app/globals.css",
-  "tailwindAttributes": ["tw"],
-  "tailwindFunctions": ["tw"]
+  "plugins": ["prettier-plugin-organize-imports"],
+  "useTabs": false
 }

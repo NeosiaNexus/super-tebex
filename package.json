@@ -28,7 +28,6 @@
     "lint": "eslint . --fix",
     "format": "prettier --write .",
     "clean": "bun run format && bun run lint",
-    "prepare": "bun clean && bun run build",
     "test": "vitest",
     "test:ui": "vitest --ui",
     "coverage": "vitest run --coverage",
