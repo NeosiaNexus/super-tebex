@@ -1,10 +1,10 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
+import { TebexErrorCode } from '../../src/errors/codes';
 import { useBasket } from '../../src/hooks/useBasket';
 import { useCreatorCodes } from '../../src/hooks/useCreatorCodes';
 import { useUser } from '../../src/hooks/useUser';
-import { TebexErrorCode } from '../../src/errors/codes';
 import { createWrapper } from '../utils/test-utils';
 
 describe('useCreatorCodes', () => {

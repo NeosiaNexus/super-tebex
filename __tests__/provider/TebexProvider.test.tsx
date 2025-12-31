@@ -1,10 +1,10 @@
-import { renderHook, render, screen } from '@testing-library/react';
+import { render, renderHook, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { TebexProvider, useTebexContext, useTebexConfig } from '../../src/provider/TebexProvider';
 import { TebexErrorCode } from '../../src/errors/codes';
-import { createWrapper, testConfig } from '../utils/test-utils';
+import { TebexProvider, useTebexConfig, useTebexContext } from '../../src/provider/TebexProvider';
 import type { TebexConfig } from '../../src/types/config';
+import { createWrapper, testConfig } from '../utils/test-utils';
 
 describe('TebexProvider', () => {
   it('should provide context to children', () => {

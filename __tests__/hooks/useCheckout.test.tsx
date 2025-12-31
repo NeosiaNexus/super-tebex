@@ -1,8 +1,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useCheckout } from '../../src/hooks/useCheckout';
 import { TebexErrorCode } from '../../src/errors/codes';
+import { useCheckout } from '../../src/hooks/useCheckout';
 import { createWrapper } from '../utils/test-utils';
 
 describe('useCheckout', () => {

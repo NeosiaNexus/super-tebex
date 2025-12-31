@@ -145,7 +145,6 @@ describe('useBasket', () => {
     expect(basketResult.current.isRemovingPackage).toBe(false);
   });
 
-
   it('should update package quantity', async () => {
     const wrapper = createWrapper();
 
@@ -174,7 +173,6 @@ describe('useBasket', () => {
     // Should complete without error
     expect(basketResult.current.isUpdatingQuantity).toBe(false);
   });
-
 
   it('should add package with type and variableData', async () => {
     const wrapper = createWrapper();
