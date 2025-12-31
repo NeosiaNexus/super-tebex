@@ -33,12 +33,17 @@ export default defineConfig([
     '**/*.env',
     '**/*.env.*',
     '**/coverage',
+    '**/build.ts',
+    '**/vitest.config.ts',
+    'eslint.config.mjs',
+    '__tests__/**',
   ]),
   {
     extends: fixupConfigRules(
       compat.extends(
         'eslint:recommended',
-        'plugin:@typescript-eslint/recommended',
+        'plugin:@typescript-eslint/strict-type-checked',
+        'plugin:@typescript-eslint/stylistic-type-checked',
         'plugin:react-hooks/recommended',
         'plugin:jsx-a11y/recommended',
         'plugin:import/errors',
@@ -61,28 +66,70 @@ export default defineConfig([
       parser: tsParser,
       ecmaVersion: 'latest',
       sourceType: 'module',
+      parserOptions: {
+        project: './tsconfig.test.json',
+        tsconfigRootDir: __dirname,
+      },
     },
 
     settings: {
       'import/resolver': {
         typescript: {},
       },
+      react: {
+        version: 'detect',
+      },
     },
 
     rules: {
+      // TypeScript strict rules - Zero any tolerance
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unsafe-argument': 'error',
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-unsafe-call': 'error',
+      '@typescript-eslint/no-unsafe-member-access': 'error',
+      '@typescript-eslint/no-unsafe-return': 'error',
+
+      // Explicit types at boundaries
       '@typescript-eslint/explicit-function-return-type': [
-        'warn',
+        'error',
         {
           allowExpressions: true,
+          allowTypedFunctionExpressions: true,
+          allowHigherOrderFunctions: true,
+          allowDirectConstAssertionInArrowFunctions: true,
         },
       ],
+      '@typescript-eslint/explicit-module-boundary-types': 'error',
 
-      '@typescript-eslint/explicit-module-boundary-types': 'warn',
+      // Better practices
       '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/prefer-nullish-coalescing': 'error',
+      '@typescript-eslint/prefer-optional-chain': 'error',
+      '@typescript-eslint/strict-boolean-expressions': [
+        'error',
+        {
+          allowString: false,
+          allowNumber: false,
+          allowNullableObject: true,
+          allowNullableBoolean: false,
+          allowNullableString: false,
+          allowNullableNumber: false,
+          allowAny: false,
+        },
+      ],
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+      '@typescript-eslint/no-unnecessary-condition': 'error',
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
+      '@typescript-eslint/no-misused-promises': 'error',
+      '@typescript-eslint/require-await': 'error',
+
+      // General rules
       'no-floating-promise/no-floating-promise': 2,
       'prefer-const': 'error',
-      'no-empty-function': 'error',
+      'no-empty-function': 'off',
+      '@typescript-eslint/no-empty-function': 'error',
       'object-shorthand': ['error', 'always'],
       'react/react-in-jsx-scope': 'off',
       'no-console': 'error',
@@ -102,14 +149,15 @@ export default defineConfig([
       'eol-last': ['warn', 'always'],
       indent: 'off',
       'no-duplicate-imports': 'error',
-      'no-return-await': 'error',
+      'no-return-await': 'off',
+      '@typescript-eslint/return-await': ['error', 'in-try-catch'],
       'no-var': 'error',
       eqeqeq: ['error', 'always'],
       'no-param-reassign': ['error'],
       'prefer-arrow-callback': 'error',
       'react/jsx-boolean-value': ['warn', 'never'],
       'react/self-closing-comp': 'warn',
-      'react-hooks/exhaustive-deps': 'warn',
+      'react-hooks/exhaustive-deps': 'error',
       'jsx-a11y/alt-text': 'off',
 
       'unused-imports/no-unused-vars': [

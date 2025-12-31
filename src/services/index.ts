@@ -1,2 +1,1 @@
-export { default as basketService } from './basketService';
-export { default as categoriesService } from './categoriesService';
+export { getTebexClient, initTebexClient, isTebexClientInitialized, resetTebexClient } from './api';
