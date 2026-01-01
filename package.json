@@ -1,6 +1,6 @@
 {
   "name": "@neosianexus/super-tebex",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "Tebex Headless SDK optimized for Next.js App Router with TanStack Query",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -95,12 +95,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/NeosiaNexus/tebex-nextjs.git"
+    "url": "git+https://github.com/NeosiaNexus/super-tebex.git"
   },
   "author": "NeosiaNexus <devneosianexus@gmail.com>",
   "license": "MIT",
-  "homepage": "https://github.com/NeosiaNexus/tebex-nextjs#readme",
-  "bugs": "https://github.com/NeosiaNexus/tebex-nextjs/issues",
+  "homepage": "https://github.com/NeosiaNexus/super-tebex#readme",
+  "bugs": "https://github.com/NeosiaNexus/super-tebex/issues",
   "engines": {
     "node": ">=18"
   }
