@@ -1,0 +1,79 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug!
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+      placeholder: When I call addPackage(), the basket doesn't update...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Call useBasket()
+        2. Call addPackage({ packageId: 123 })
+        3. Check basket.packages
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: Code example
+      description: Minimal code to reproduce the issue
+      render: tsx
+
+  - type: dropdown
+    id: version
+    attributes:
+      label: Package version
+      description: Which version are you using?
+      options:
+        - 3.0.x (latest)
+        - 2.x
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: react-version
+    attributes:
+      label: React version
+      options:
+        - React 19
+        - React 18
+    validations:
+      required: true
+
+  - type: dropdown
+    id: nextjs-version
+    attributes:
+      label: Next.js version
+      options:
+        - Next.js 15
+        - Next.js 14
+        - Not using Next.js
+    validations:
+      required: true

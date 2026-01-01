@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question
+    url: https://github.com/NeosiaNexus/super-tebex/discussions
+    about: Ask questions in GitHub Discussions
+  - name: Tebex Documentation
+    url: https://docs.tebex.io/
+    about: Official Tebex API documentation
