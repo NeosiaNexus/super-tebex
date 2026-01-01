@@ -11,7 +11,7 @@ import { useBasket } from './useBasket';
 
 /**
  * Tebex.js checkout interface.
- * Loaded from https://js.tebex.io/v/checkout.js
+ * Loaded from https://js.tebex.io/v/1.js
  */
 interface TebexCheckout {
   init: (options: { ident: string }) => void;
@@ -70,7 +70,7 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
       if (tebexGlobal === undefined) {
         throw new TebexError(
           TebexErrorCode.TEBEX_JS_NOT_LOADED,
-          'Tebex.js not loaded. Add <script src="https://js.tebex.io/v/checkout.js"></script> to your page.',
+          'Tebex.js not loaded. Add <script src="https://js.tebex.io/v/1.js"></script> to your page.',
         );
       }
 

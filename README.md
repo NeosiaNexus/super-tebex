@@ -221,7 +221,7 @@ const {
 });
 
 // Requires Tebex.js script in your page
-// <script src="https://js.tebex.io/v/checkout.js" />
+// <script src="https://js.tebex.io/v/1.js" />
 ```
 
 ### useUser
