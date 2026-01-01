@@ -1,27 +1,33 @@
-# @neosia/tebex-nextjs
+# @neosianexus/super-tebex
 
-Tebex Headless SDK optimized for Next.js App Router with TanStack Query and Zustand.
+[![npm version](https://img.shields.io/npm/v/@neosianexus/super-tebex?color=blue)](https://www.npmjs.com/package/@neosianexus/super-tebex)
+[![npm downloads](https://img.shields.io/npm/dm/@neosianexus/super-tebex)](https://www.npmjs.com/package/@neosianexus/super-tebex)
+[![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen)](https://github.com/NeosiaNexus/super-tebex)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+> Tebex Headless SDK optimized for Next.js App Router with TanStack Query and Zustand.
 
 ## Features
 
 - **TanStack Query v5** - Automatic caching, retry, stale-while-revalidate
-- **Zustand v5** - Persisted client state (basket, user)
+- **Zustand v5** - Persisted client state (basket, user) in localStorage
 - **TypeScript First** - Zero `any`, strict mode, exhaustive types
 - **Provider Pattern** - Single provider, granular hooks
-- **Error Codes** - i18n-friendly error handling with `TebexErrorCode`
+- **Error Codes** - i18n-friendly error handling with `TebexErrorCode` enum
 - **Optimistic Updates** - Instant UI feedback on basket mutations
 - **React Query DevTools** - Automatic in development mode
 
 ## Installation
 
 ```bash
-npm install @neosia/tebex-nextjs
+npm install @neosianexus/super-tebex
 # or
-yarn add @neosia/tebex-nextjs
+yarn add @neosianexus/super-tebex
 # or
-pnpm add @neosia/tebex-nextjs
+pnpm add @neosianexus/super-tebex
 # or
-bun add @neosia/tebex-nextjs
+bun add @neosianexus/super-tebex
 ```
 
 ### Peer Dependencies
@@ -47,7 +53,7 @@ Wrap your app with `TebexProvider` in your root layout:
 
 ```tsx
 // app/layout.tsx
-import { TebexProvider } from '@neosia/tebex-nextjs';
+import { TebexProvider } from '@neosianexus/super-tebex';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -80,7 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 ```tsx
 'use client';
 
-import { useCategories, useBasket, useUser } from '@neosia/tebex-nextjs';
+import { useCategories, useBasket, useUser } from '@neosianexus/super-tebex';
 
 export function Shop() {
   const { username, setUsername } = useUser();
@@ -111,44 +117,79 @@ export function Shop() {
 }
 ```
 
-## Available Hooks
+---
 
-### Data Fetching Hooks
+## API Reference
+
+### Provider & Configuration
+
+| Export | Description |
+|--------|-------------|
+| `TebexProvider` | Main provider component - wrap your app with this |
+| `useTebexContext()` | Access QueryClient and config from context |
+| `useTebexConfig()` | Access just the Tebex configuration |
+
+#### TebexConfig
+
+```typescript
+interface TebexConfig {
+  publicKey: string;       // Your Tebex public key
+  baseUrl: string;         // Your site URL (for checkout redirects)
+  urls?: {
+    complete?: string;     // Success redirect path (default: '/shop/complete')
+    cancel?: string;       // Cancel redirect path (default: '/shop/cancel')
+  };
+  onError?: (error: TebexError) => void;  // Global error callback
+  devtools?: boolean;      // Enable React Query DevTools (default: true in dev)
+}
+```
+
+---
+
+### Hooks
+
+#### Data Fetching Hooks
 
 | Hook | Description |
 |------|-------------|
-| `useCategories()` | Fetch all categories (with optional packages) |
-| `useCategory(id)` | Fetch a single category by ID |
-| `usePackages()` | Fetch all packages |
-| `usePackage(id)` | Fetch a single package by ID |
+| `useCategories(options?)` | Fetch all categories (with optional packages) |
+| `useCategory(options)` | Fetch a single category by ID |
+| `usePackages(options?)` | Fetch all packages (optionally by category) |
+| `usePackage(options)` | Fetch a single package by ID |
 | `useWebstore()` | Fetch webstore info (name, currency, domain) |
 
-### Basket Management
+#### Basket Management Hooks
 
 | Hook | Description |
 |------|-------------|
 | `useBasket()` | Full basket management with optimistic updates |
-| `useCheckout()` | Launch Tebex.js checkout modal |
+| `useCheckout(options?)` | Launch Tebex.js checkout modal |
 | `useCoupons()` | Apply/remove coupon codes |
 | `useGiftCards()` | Apply/remove gift cards |
 | `useCreatorCodes()` | Apply/remove creator codes |
 | `useGiftPackage()` | Gift a package to another user |
 
-### User Management
+#### User Management Hooks
 
 | Hook | Description |
 |------|-------------|
 | `useUser()` | Username management (persisted in localStorage) |
 
-## Hook Examples
+---
 
-### useBasket
+### Hook Details
 
-```tsx
+#### useBasket
+
+```typescript
 const {
+  // Data
   basket,           // Basket | null
   packages,         // BasketPackage[]
   basketIdent,      // string | null
+  itemCount,        // number
+  total,            // number
+  isEmpty,          // boolean
 
   // Loading states
   isLoading,
@@ -167,25 +208,20 @@ const {
   updateQuantity,   // (params: UpdateQuantityParams) => Promise<void>
   clearBasket,      // () => void
   refetch,          // () => Promise<...>
-
-  // Computed
-  itemCount,        // number
-  total,            // number
-  isEmpty,          // boolean
 } = useBasket();
 
 // Add package with options
 await addPackage({
   packageId: 123,
-  quantity: 2,
-  type: 'single',  // optional: 'single' | 'subscription'
-  variableData: { server: 'survival' },  // optional
+  quantity: 2,                          // optional, default: 1
+  type: 'single',                       // optional: 'single' | 'subscription'
+  variableData: { server: 'survival' }, // optional
 });
 ```
 
-### useCategories
+#### useCategories
 
-```tsx
+```typescript
 const {
   categories,  // Category[] | null
   data,        // same as categories
@@ -204,9 +240,30 @@ const {
 });
 ```
 
-### useCheckout
+#### usePackages
 
-```tsx
+```typescript
+const {
+  packages,    // Package[] | null
+  data,        // same as packages
+  isLoading,
+  isFetching,
+  error,
+  errorCode,
+  refetch,
+
+  // Helpers
+  getById,     // (id: number) => Package | undefined
+  getByName,   // (name: string) => Package | undefined
+} = usePackages({
+  categoryId: 123,  // optional: filter by category
+  enabled: true,    // default: true
+});
+```
+
+#### useCheckout
+
+```typescript
 const {
   launch,       // () => Promise<void>
   isLaunching,
@@ -220,13 +277,13 @@ const {
   onClose: () => console.log('Checkout closed'),
 });
 
-// Requires Tebex.js script in your page
-// <script src="https://js.tebex.io/v/1.js" />
+// IMPORTANT: Requires Tebex.js script in your page
+// <script src="https://js.tebex.io/v/1.1.js" async />
 ```
 
-### useUser
+#### useUser
 
-```tsx
+```typescript
 const {
   username,        // string | null
   setUsername,     // (username: string) => void
@@ -235,9 +292,9 @@ const {
 } = useUser();
 ```
 
-### useCoupons
+#### useCoupons
 
-```tsx
+```typescript
 const {
   coupons,     // Code[]
   apply,       // (code: string) => Promise<void>
@@ -249,12 +306,75 @@ const {
 } = useCoupons();
 ```
 
+#### useGiftCards
+
+```typescript
+const {
+  giftCards,   // GiftCardCode[]
+  apply,       // (code: string) => Promise<void>
+  remove,      // (code: string) => Promise<void>
+  isApplying,
+  isRemoving,
+  error,
+  errorCode,
+} = useGiftCards();
+```
+
+#### useCreatorCodes
+
+```typescript
+const {
+  creatorCode, // string | null
+  apply,       // (code: string) => Promise<void>
+  remove,      // () => Promise<void>
+  isApplying,
+  isRemoving,
+  error,
+  errorCode,
+} = useCreatorCodes();
+```
+
+#### useGiftPackage
+
+```typescript
+const {
+  gift,        // (params: GiftPackageParams) => Promise<void>
+  isGifting,
+  error,
+  errorCode,
+} = useGiftPackage();
+
+// Gift a package to another player
+await gift({
+  packageId: 123,
+  targetUsername: 'friend_username',
+});
+```
+
+#### useWebstore
+
+```typescript
+const {
+  webstore,    // Webstore | null
+  name,        // string | null
+  currency,    // string | null
+  domain,      // string | null
+  isLoading,
+  isFetching,
+  error,
+  errorCode,
+  refetch,
+} = useWebstore();
+```
+
+---
+
 ## Error Handling
 
 All hooks expose `error` (TebexError) and `errorCode` (TebexErrorCode) for i18n-friendly error handling:
 
-```tsx
-import { TebexErrorCode } from '@neosia/tebex-nextjs';
+```typescript
+import { TebexErrorCode } from '@neosianexus/super-tebex';
 
 const { error, errorCode } = useBasket();
 
@@ -271,112 +391,184 @@ if (errorCode) {
 }
 ```
 
-### Available Error Codes
+### All Error Codes
 
 | Category | Codes |
 |----------|-------|
-| Provider | `PROVIDER_NOT_FOUND`, `INVALID_CONFIG` |
-| Auth | `NOT_AUTHENTICATED`, `INVALID_USERNAME` |
-| Basket | `BASKET_NOT_FOUND`, `BASKET_CREATION_FAILED`, `BASKET_EXPIRED` |
-| Package | `PACKAGE_NOT_FOUND`, `PACKAGE_OUT_OF_STOCK`, `PACKAGE_ALREADY_OWNED`, `INVALID_QUANTITY` |
-| Category | `CATEGORY_NOT_FOUND` |
-| Coupon | `COUPON_INVALID`, `COUPON_EXPIRED`, `COUPON_ALREADY_USED` |
-| Gift Card | `GIFTCARD_INVALID`, `GIFTCARD_INSUFFICIENT_BALANCE` |
-| Creator Code | `CREATOR_CODE_INVALID` |
-| Checkout | `CHECKOUT_FAILED`, `CHECKOUT_CANCELLED` |
-| Network | `NETWORK_ERROR`, `TIMEOUT`, `RATE_LIMITED` |
-| Unknown | `UNKNOWN` |
+| **Provider** | `PROVIDER_NOT_FOUND`, `INVALID_CONFIG` |
+| **Auth** | `NOT_AUTHENTICATED`, `INVALID_USERNAME` |
+| **Basket** | `BASKET_NOT_FOUND`, `BASKET_CREATION_FAILED`, `BASKET_EXPIRED`, `BASKET_EMPTY` |
+| **Package** | `PACKAGE_NOT_FOUND`, `PACKAGE_OUT_OF_STOCK`, `PACKAGE_ALREADY_OWNED`, `INVALID_QUANTITY` |
+| **Category** | `CATEGORY_NOT_FOUND` |
+| **Coupon** | `COUPON_INVALID`, `COUPON_EXPIRED`, `COUPON_ALREADY_USED` |
+| **Gift Card** | `GIFTCARD_INVALID`, `GIFTCARD_INSUFFICIENT_BALANCE` |
+| **Creator Code** | `CREATOR_CODE_INVALID` |
+| **Checkout** | `CHECKOUT_FAILED`, `CHECKOUT_CANCELLED`, `TEBEX_JS_NOT_LOADED` |
+| **Network** | `NETWORK_ERROR`, `TIMEOUT`, `RATE_LIMITED` |
+| **Unknown** | `UNKNOWN` |
+
+---
 
 ## TypeScript
 
 All types are exported:
 
-```tsx
+```typescript
 import type {
   // Config
   TebexConfig,
   TebexUrls,
+  ResolvedTebexConfig,
 
   // Hook Returns
   UseBasketReturn,
   UseCategoriesReturn,
+  UseCategoriesOptions,
+  UseCategoryReturn,
+  UseCategoryOptions,
+  UsePackagesReturn,
+  UsePackagesOptions,
+  UsePackageReturn,
+  UsePackageOptions,
   UseCheckoutReturn,
-  // ... all hook return types
+  UseCheckoutOptions,
+  UseCouponsReturn,
+  UseGiftCardsReturn,
+  UseCreatorCodesReturn,
+  UseGiftPackageReturn,
+  UseWebstoreReturn,
+  UseUserReturn,
 
-  // Tebex API types
+  // Params
+  AddPackageParams,
+  UpdateQuantityParams,
+  GiftPackageParams,
+
+  // Base types
+  BaseQueryReturn,
+  BaseMutationReturn,
+
+  // Tebex API types (re-exported from tebex_headless)
   Basket,
   BasketPackage,
   Category,
   Package,
+  PackageType,
   Webstore,
+  Code,
+  GiftCardCode,
 
   // Utilities
   Result,
-  TebexError,
-  TebexErrorCode,
-} from '@neosia/tebex-nextjs';
+} from '@neosianexus/super-tebex';
+
+// Error handling
+import { TebexError, TebexErrorCode } from '@neosianexus/super-tebex';
 
 // Type guards
-import { isTebexError, isSuccess, isError, isDefined } from '@neosia/tebex-nextjs';
+import {
+  isTebexError,  // (error: unknown) => error is TebexError
+  isSuccess,     // (result: Result<T,E>) => result is { ok: true, data: T }
+  isError,       // (result: Result<T,E>) => result is { ok: false, error: E }
+  isDefined,     // <T>(value: T | null | undefined) => value is T
+} from '@neosianexus/super-tebex';
+
+// Result utilities
+import { ok, err } from '@neosianexus/super-tebex';
 ```
 
-## Migration from v2
+---
 
-### Breaking Changes
+## Zustand Stores
 
-| v2 | v3 | Migration |
-|----|-----|-----------|
-| `initTebex(key)` | `<TebexProvider config={{...}}>` | Wrap app with Provider |
-| `initShopUrls(url)` | `config.baseUrl` + `config.urls` | Pass in config |
-| `useBasket(username)` | `useBasket()` + `useUser()` | User is separate |
-| `error.message` (FR) | `error.code` | Translate codes yourself |
-| `sonner` peer dep | Removed | Handle toasts yourself |
-| `useShopUserStore` | `useUserStore` | Renamed |
-| `useShopBasketStore` | `useBasketStore` | Renamed |
+Direct store access for advanced use cases:
 
-### Migration Example
+```typescript
+import { useBasketStore, useUserStore } from '@neosianexus/super-tebex';
 
-**Before (v2):**
+// Access stores directly (outside of hooks)
+const basketIdent = useBasketStore(state => state.basketIdent);
+const setBasketIdent = useBasketStore(state => state.setBasketIdent);
+const clearBasketIdent = useBasketStore(state => state.clearBasketIdent);
 
-```tsx
-// lib/tebex.ts
-initTebex(process.env.NEXT_PUBLIC_TEBEX_KEY);
-initShopUrls('https://mysite.com');
-
-// Component
-const username = useShopUserStore(s => s.username);
-const { basket, addPackageToBasket, error } = useBasket(username);
-
-if (error) toast.error(error.message); // French message
+const username = useUserStore(state => state.username);
+const setUsername = useUserStore(state => state.setUsername);
+const clearUsername = useUserStore(state => state.clearUsername);
 ```
 
-**After (v3):**
+---
 
-```tsx
-// app/layout.tsx
-<TebexProvider
-  config={{
-    publicKey: process.env.NEXT_PUBLIC_TEBEX_KEY!,
-    baseUrl: 'https://mysite.com',
-    onError: (err) => toast.error(t(`errors.${err.code}`)),
-  }}
->
+## Query Keys
+
+For manual cache invalidation:
+
+```typescript
+import { tebexKeys } from '@neosianexus/super-tebex';
+import { useQueryClient } from '@tanstack/react-query';
+
+const queryClient = useQueryClient();
+
+// Available keys
+tebexKeys.all              // ['tebex']
+tebexKeys.categories()     // ['tebex', 'categories']
+tebexKeys.categoriesList() // ['tebex', 'categories', 'list']
+tebexKeys.category(id)     // ['tebex', 'categories', id]
+tebexKeys.packages()       // ['tebex', 'packages']
+tebexKeys.packagesList()   // ['tebex', 'packages', 'list']
+tebexKeys.package(id)      // ['tebex', 'packages', id]
+tebexKeys.baskets()        // ['tebex', 'baskets']
+tebexKeys.basket(ident)    // ['tebex', 'baskets', ident]
+tebexKeys.webstore()       // ['tebex', 'webstore']
+
+// Invalidate specific queries
+queryClient.invalidateQueries({ queryKey: tebexKeys.categories() });
+queryClient.invalidateQueries({ queryKey: tebexKeys.basket(basketIdent) });
+```
+
+---
+
+## Advanced Usage
+
+### Custom QueryClient
+
+```typescript
+import { QueryClient } from '@tanstack/react-query';
+import { TebexProvider } from '@neosianexus/super-tebex';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000, // 30 seconds
+    },
+  },
+});
+
+<TebexProvider config={config} queryClient={queryClient}>
   {children}
 </TebexProvider>
-
-// Component
-const { username } = useUser();
-const { basket, addPackage, errorCode } = useBasket();
-
-// Errors handled by onError callback or manually with errorCode
 ```
+
+### Direct API Client Access
+
+For advanced scenarios requiring direct API access:
+
+```typescript
+import { getTebexClient, isTebexClientInitialized } from '@neosianexus/super-tebex';
+
+if (isTebexClientInitialized()) {
+  const client = getTebexClient();
+  // Use client directly (advanced usage only)
+}
+```
+
+---
 
 ## Complete Example
 
 ```tsx
 'use client';
 
-import { useCategories, useBasket, useUser, useCheckout } from '@neosia/tebex-nextjs';
+import { useCategories, useBasket, useUser, useCheckout } from '@neosianexus/super-tebex';
 import { useState } from 'react';
 
 export default function ShopPage() {
@@ -496,50 +688,137 @@ export default function ShopPage() {
 }
 ```
 
-## Advanced Usage
+---
 
-### Custom QueryClient
+## Migration from v2
+
+### Breaking Changes
+
+| v2 | v3 | Migration |
+|----|-----|-----------|
+| `initTebex(key)` | `<TebexProvider config={{...}}>` | Wrap app with Provider |
+| `initShopUrls(url)` | `config.baseUrl` + `config.urls` | Pass in config |
+| `useBasket(username)` | `useBasket()` + `useUser()` | User is separate |
+| `error.message` (FR) | `error.code` | Translate codes yourself |
+| `sonner` peer dep | Removed | Handle toasts yourself |
+| `useShopUserStore` | `useUserStore` | Renamed |
+| `useShopBasketStore` | `useBasketStore` | Renamed |
+
+### Migration Example
+
+**Before (v2):**
 
 ```tsx
-import { QueryClient } from '@tanstack/react-query';
-import { TebexProvider } from '@neosia/tebex-nextjs';
+// lib/tebex.ts
+initTebex(process.env.NEXT_PUBLIC_TEBEX_KEY);
+initShopUrls('https://mysite.com');
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 30 * 1000, // 30 seconds
-    },
-  },
-});
+// Component
+const username = useShopUserStore(s => s.username);
+const { basket, addPackageToBasket, error } = useBasket(username);
 
-<TebexProvider config={config} queryClient={queryClient}>
+if (error) toast.error(error.message); // French message
+```
+
+**After (v3):**
+
+```tsx
+// app/layout.tsx
+<TebexProvider
+  config={{
+    publicKey: process.env.NEXT_PUBLIC_TEBEX_KEY!,
+    baseUrl: 'https://mysite.com',
+    onError: (err) => toast.error(t(`errors.${err.code}`)),
+  }}
+>
   {children}
 </TebexProvider>
+
+// Component
+const { username } = useUser();
+const { basket, addPackage, errorCode } = useBasket();
+
+// Errors handled by onError callback or manually with errorCode
 ```
 
-### Direct Store Access
+---
 
-```tsx
-import { useBasketStore, useUserStore } from '@neosia/tebex-nextjs';
+## Quick Reference for AI/LLM
 
-// Access stores directly (outside of hooks)
-const basketIdent = useBasketStore(state => state.basketIdent);
-const username = useUserStore(state => state.username);
+<details>
+<summary><strong>Click to expand - Structured reference for AI assistants</strong></summary>
+
+### Package Info
+- **Name**: `@neosianexus/super-tebex`
+- **Purpose**: Tebex Headless SDK wrapper for React/Next.js
+- **State**: TanStack Query v5 (server) + Zustand v5 (client)
+
+### Common Patterns
+
+```typescript
+// 1. Setup (app/layout.tsx)
+<TebexProvider config={{ publicKey, baseUrl }}>{children}</TebexProvider>
+
+// 2. Get categories with packages
+const { categories } = useCategories({ includePackages: true });
+
+// 3. Add to basket
+const { addPackage } = useBasket();
+await addPackage({ packageId: 123 });
+
+// 4. Checkout
+const { launch, canCheckout } = useCheckout();
+if (canCheckout) await launch();
+
+// 5. User management
+const { username, setUsername } = useUser();
+setUsername('player_name');
 ```
 
-### Query Keys
+### Hook Signatures
 
-```tsx
-import { tebexKeys } from '@neosia/tebex-nextjs';
-import { useQueryClient } from '@tanstack/react-query';
+| Hook | Key Params | Key Returns |
+|------|------------|-------------|
+| `useCategories(opts?)` | `includePackages` | `categories`, `getById`, `getByName` |
+| `useCategory(opts)` | `id` | `category` |
+| `usePackages(opts?)` | `categoryId` | `packages`, `getById`, `getByName` |
+| `usePackage(opts)` | `id` | `package` |
+| `useWebstore()` | - | `webstore`, `name`, `currency`, `domain` |
+| `useBasket()` | - | `basket`, `addPackage`, `removePackage`, `itemCount` |
+| `useCheckout(opts?)` | `onSuccess`, `onError` | `launch`, `canCheckout`, `isLaunching` |
+| `useUser()` | - | `username`, `setUsername`, `isAuthenticated` |
+| `useCoupons()` | - | `coupons`, `apply`, `remove` |
+| `useGiftCards()` | - | `giftCards`, `apply`, `remove` |
+| `useCreatorCodes()` | - | `creatorCode`, `apply`, `remove` |
+| `useGiftPackage()` | - | `gift`, `isGifting` |
 
-const queryClient = useQueryClient();
+### Error Handling Pattern
 
-// Invalidate specific queries
-queryClient.invalidateQueries({ queryKey: tebexKeys.categories() });
-queryClient.invalidateQueries({ queryKey: tebexKeys.basket(basketIdent) });
+```typescript
+const { errorCode } = useBasket();
+if (errorCode === TebexErrorCode.BASKET_NOT_FOUND) {
+  // Handle expired basket
+}
 ```
+
+### Requirements
+- Must wrap app with `TebexProvider`
+- Checkout requires `<script src="https://js.tebex.io/v/1.1.js" async />`
+- Username required before adding to basket
+
+</details>
+
+---
 
 ## License
 
 MIT
+
+---
+
+## Links
+
+- [GitHub Repository](https://github.com/NeosiaNexus/super-tebex)
+- [NPM Package](https://www.npmjs.com/package/@neosianexus/super-tebex)
+- [Tebex Documentation](https://docs.tebex.io/)
+- [Report Issues](https://github.com/NeosiaNexus/super-tebex/issues)
