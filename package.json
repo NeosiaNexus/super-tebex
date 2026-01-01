@@ -1,6 +1,6 @@
 {
   "name": "@neosianexus/super-tebex",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "description": "Tebex Headless SDK optimized for Next.js App Router with TanStack Query",
   "type": "module",
   "main": "./dist/index.cjs",
