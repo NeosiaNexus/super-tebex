@@ -2,7 +2,9 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { usePackages } from '../../src/hooks/usePackages';
-import { createWrapper } from '../utils/test-utils';
+import { errorHandlers } from '../mocks/handlers';
+import { server } from '../setup';
+import { createWrapper, TebexErrorCode } from '../utils/test-utils';
 
 describe('usePackages', () => {
   it('should fetch all packages successfully', async () => {
@@ -77,5 +79,40 @@ describe('usePackages', () => {
     // Should not fetch when disabled
     expect(result.current.isLoading).toBe(false);
     expect(result.current.packages).toBeNull();
+  });
+
+  // ============================================================================
+  // NEW TESTS: Error handling
+  // ============================================================================
+
+  it('should handle fetch error and provide error code', async () => {
+    // usePackages uses getCategories internally, so we need to override that
+    server.use(errorHandlers.categories500);
+
+    const { result } = renderHook(() => usePackages(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    // Verify error is populated
+    expect(result.current.error).not.toBeNull();
+    expect(result.current.errorCode).toBe(TebexErrorCode.UNKNOWN);
+    expect(result.current.packages).toBeNull();
+  });
+
+  it('should have refetch function', async () => {
+    const { result } = renderHook(() => usePackages(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    // Verify refetch is available
+    expect(typeof result.current.refetch).toBe('function');
   });
 });

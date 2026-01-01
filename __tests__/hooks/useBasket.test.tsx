@@ -2,11 +2,17 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 
-import { TebexErrorCode } from '../../src/errors/codes';
 import { useBasket } from '../../src/hooks/useBasket';
 import { useUser } from '../../src/hooks/useUser';
+import { errorHandlers } from '../mocks/handlers';
 import { server } from '../setup';
-import { createWrapper, testConfig } from '../utils/test-utils';
+import {
+  assertTebexError,
+  createWrapper,
+  expectTebexError,
+  TebexErrorCode,
+  testConfig,
+} from '../utils/test-utils';
 
 describe('useBasket', () => {
   it('should start with empty basket when no basketIdent', async () => {
@@ -78,13 +84,28 @@ describe('useBasket', () => {
 
     const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
 
-    // Add packages
+    // Add packages with quantity 2
     await act(async () => {
       await basketResult.current.addPackage({ packageId: 101, quantity: 2 });
     });
 
     await waitFor(() => {
       expect(basketResult.current.basketIdent).not.toBeNull();
+    });
+
+    // Verify itemCount equals the quantity added
+    await waitFor(() => {
+      expect(basketResult.current.itemCount).toBe(2);
+    });
+
+    // Add another package with quantity 3
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 102, quantity: 3 });
+    });
+
+    // Total itemCount should be 5 (2 + 3)
+    await waitFor(() => {
+      expect(basketResult.current.itemCount).toBe(5);
     });
   });
 
@@ -137,15 +158,23 @@ describe('useBasket', () => {
 
     await waitFor(() => {
       expect(basketResult.current.basketIdent).not.toBeNull();
+      expect(basketResult.current.packages).toHaveLength(1);
     });
+
+    // Verify package was added
+    expect(basketResult.current.packages[0].id).toBe(101);
 
     // Remove the package
     await act(async () => {
       await basketResult.current.removePackage(101);
     });
 
-    // Should complete without error
+    // Verify package was actually removed
+    await waitFor(() => {
+      expect(basketResult.current.packages).toHaveLength(0);
+    });
     expect(basketResult.current.isRemovingPackage).toBe(false);
+    expect(basketResult.current.isEmpty).toBe(true);
   });
 
   it('should update package quantity', async () => {
@@ -159,22 +188,30 @@ describe('useBasket', () => {
 
     const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
 
-    // Add a package first
+    // Add a package first with quantity 1
     await act(async () => {
-      await basketResult.current.addPackage({ packageId: 101 });
+      await basketResult.current.addPackage({ packageId: 101, quantity: 1 });
     });
 
     await waitFor(() => {
       expect(basketResult.current.basketIdent).not.toBeNull();
+      expect(basketResult.current.packages).toHaveLength(1);
     });
 
-    // Update quantity
+    // Verify initial quantity
+    expect(basketResult.current.packages[0].in_basket.quantity).toBe(1);
+
+    // Update quantity to 5
     await act(async () => {
       await basketResult.current.updateQuantity({ packageId: 101, quantity: 5 });
     });
 
-    // Should complete without error
+    // Verify quantity was actually updated
+    await waitFor(() => {
+      expect(basketResult.current.packages[0].in_basket.quantity).toBe(5);
+    });
     expect(basketResult.current.isUpdatingQuantity).toBe(false);
+    expect(basketResult.current.itemCount).toBe(5);
   });
 
   it('should add package with type and variableData', async () => {
@@ -280,19 +317,17 @@ describe('useBasket', () => {
     });
 
     // Try to remove without basket - should fail
-    let thrownError: Error | null = null;
+    let thrownError: unknown = null;
     await act(async () => {
       try {
         await basketResult.current.removePackage(101);
       } catch (e) {
-        thrownError = e as Error;
+        thrownError = e;
       }
     });
 
     expect(thrownError).not.toBeNull();
-    expect((thrownError as unknown as { code: TebexErrorCode }).code).toBe(
-      TebexErrorCode.BASKET_NOT_FOUND,
-    );
+    expectTebexError(thrownError, TebexErrorCode.BASKET_NOT_FOUND);
   });
 
   it('should throw BASKET_NOT_FOUND when updating quantity without basket', async () => {
@@ -301,19 +336,17 @@ describe('useBasket', () => {
     });
 
     // Try to update quantity without basket - should fail
-    let thrownError: Error | null = null;
+    let thrownError: unknown = null;
     await act(async () => {
       try {
         await basketResult.current.updateQuantity({ packageId: 101, quantity: 5 });
       } catch (e) {
-        thrownError = e as Error;
+        thrownError = e;
       }
     });
 
     expect(thrownError).not.toBeNull();
-    expect((thrownError as unknown as { code: TebexErrorCode }).code).toBe(
-      TebexErrorCode.BASKET_NOT_FOUND,
-    );
+    expectTebexError(thrownError, TebexErrorCode.BASKET_NOT_FOUND);
   });
 
   it('should call onError callback when add package fails', async () => {
@@ -464,9 +497,9 @@ describe('useBasket', () => {
 
     const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
 
-    // Add a package
+    // Add a package (VIP Gold = 9.99 EUR)
     await act(async () => {
-      await basketResult.current.addPackage({ packageId: 101 });
+      await basketResult.current.addPackage({ packageId: 101, quantity: 1 });
     });
 
     await waitFor(() => {
@@ -479,9 +512,23 @@ describe('useBasket', () => {
       await basketResult.current.refetch();
     });
 
-    // Total should be greater than 0 after refetch
+    // Total should be 9.99 (VIP Gold price)
     await waitFor(() => {
-      expect(basketResult.current.total).toBeGreaterThanOrEqual(0);
+      expect(basketResult.current.total).toBe(9.99);
+    });
+
+    // Add another package (VIP Diamond = 19.99 EUR)
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 102, quantity: 1 });
+    });
+
+    await act(async () => {
+      await basketResult.current.refetch();
+    });
+
+    // Total should be ~29.98 (9.99 + 19.99) - use toBeCloseTo for floating point
+    await waitFor(() => {
+      expect(basketResult.current.total).toBeCloseTo(29.98, 2);
     });
   });
 
@@ -576,5 +623,235 @@ describe('useBasket', () => {
 
     // Verify clearBasket works (the same function the effect uses)
     expect(basketResult.current.basketIdent).toBeNull();
+  });
+
+  // ============================================================================
+  // NEW TESTS: onError callbacks for mutations
+  // ============================================================================
+
+  it('should call onError callback when remove package fails', async () => {
+    const onError = vi.fn();
+    const wrapper = createWrapper({ ...testConfig, onError });
+
+    // Set username first
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    act(() => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add a package first to create a basket
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+      expect(basketResult.current.packages).toHaveLength(1);
+    });
+
+    // Override handler to return error for remove
+    server.use(errorHandlers.removePackage500);
+
+    // Try to remove - should fail and call onError
+    await act(async () => {
+      try {
+        await basketResult.current.removePackage(101);
+      } catch {
+        // Expected
+      }
+    });
+
+    // Verify onError was called with TebexError
+    expect(onError).toHaveBeenCalledTimes(1);
+    const errorArg = onError.mock.calls[0][0];
+    expect(errorArg).toHaveProperty('code');
+  });
+
+  it('should call onError callback when update quantity fails', async () => {
+    const onError = vi.fn();
+    const wrapper = createWrapper({ ...testConfig, onError });
+
+    // Set username first
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    act(() => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add a package first
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+    });
+
+    // Override handler to return error for update
+    server.use(errorHandlers.updateQuantity500);
+
+    // Try to update quantity - should fail and call onError
+    await act(async () => {
+      try {
+        await basketResult.current.updateQuantity({ packageId: 101, quantity: 10 });
+      } catch {
+        // Expected
+      }
+    });
+
+    // Verify onError was called
+    expect(onError).toHaveBeenCalledTimes(1);
+    const errorArg = onError.mock.calls[0][0];
+    expect(errorArg).toHaveProperty('code');
+  });
+
+  it('should preserve unaffected packages when updating quantity', async () => {
+    const wrapper = createWrapper();
+
+    // Set username
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    act(() => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add two packages
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101, quantity: 1 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+    });
+
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 102, quantity: 2 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.packages).toHaveLength(2);
+    });
+
+    // Get initial state of package 102
+    const pkg102Before = basketResult.current.packages.find(p => p.id === 102);
+    expect(pkg102Before?.in_basket.quantity).toBe(2);
+
+    // Update only package 101
+    await act(async () => {
+      await basketResult.current.updateQuantity({ packageId: 101, quantity: 5 });
+    });
+
+    // Verify package 101 was updated
+    await waitFor(() => {
+      const pkg101 = basketResult.current.packages.find(p => p.id === 101);
+      expect(pkg101?.in_basket.quantity).toBe(5);
+    });
+
+    // Verify package 102 was NOT affected
+    const pkg102After = basketResult.current.packages.find(p => p.id === 102);
+    expect(pkg102After?.in_basket.quantity).toBe(2);
+  });
+
+  it('should rollback optimistic update on remove error', async () => {
+    const wrapper = createWrapper();
+
+    // Set username
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    act(() => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add a package
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.packages).toHaveLength(1);
+    });
+
+    // Override handler to return error
+    server.use(errorHandlers.removePackage500);
+
+    // Try to remove - should fail and rollback
+    await act(async () => {
+      try {
+        await basketResult.current.removePackage(101);
+      } catch {
+        // Expected
+      }
+    });
+
+    // Package should still be there after rollback
+    await waitFor(() => {
+      expect(basketResult.current.packages).toHaveLength(1);
+    });
+  });
+
+  it('should rollback optimistic update on quantity update error', async () => {
+    const wrapper = createWrapper();
+
+    // Set username
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    act(() => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add a package with quantity 1
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101, quantity: 1 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.packages).toHaveLength(1);
+      expect(basketResult.current.packages[0].in_basket.quantity).toBe(1);
+    });
+
+    // Override handler to return error
+    server.use(errorHandlers.updateQuantity500);
+
+    // Try to update - should fail and rollback
+    await act(async () => {
+      try {
+        await basketResult.current.updateQuantity({ packageId: 101, quantity: 99 });
+      } catch {
+        // Expected
+      }
+    });
+
+    // Quantity should be back to 1 after rollback
+    await waitFor(() => {
+      expect(basketResult.current.packages[0].in_basket.quantity).toBe(1);
+    });
+  });
+
+  it('should verify error object has TebexError structure', async () => {
+    const { result: basketResult } = renderHook(() => useBasket(), {
+      wrapper: createWrapper(),
+    });
+
+    // Try to add without username - should fail with NOT_AUTHENTICATED
+    let thrownError: unknown = null;
+    await act(async () => {
+      try {
+        await basketResult.current.addPackage({ packageId: 101 });
+      } catch (e) {
+        thrownError = e;
+      }
+    });
+
+    // Verify error structure using type-safe helper
+    const tebexError = assertTebexError(thrownError);
+    expect(tebexError.code).toBe(TebexErrorCode.NOT_AUTHENTICATED);
+    expect(tebexError.message).toMatch(/username/i);
+    expect(tebexError.name).toBe('TebexError');
   });
 });

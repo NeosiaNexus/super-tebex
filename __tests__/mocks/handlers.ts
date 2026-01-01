@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw';
+import { delay, http, HttpResponse } from 'msw';
 
 const BASE_URL = 'https://headless.tebex.io/api';
 
@@ -262,15 +262,22 @@ export const handlers = [
   http.post(`${ACCOUNTS_URL}/baskets/:basketIdent/coupons`, async ({ params, request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     const couponCode = body.coupon_code as string;
+    const ident = params.basketIdent as string;
 
     if (couponCode === 'INVALID') {
       return HttpResponse.json({ error: 'Invalid coupon' }, { status: 400 });
     }
 
+    // Update basket state with coupon
+    const state = basketsState.get(ident);
+    if (state) {
+      state.coupons = [{ code: couponCode, discount: 10 }];
+    }
+
     return HttpResponse.json({
       data: {
         ...mockData.basket,
-        ident: params.basketIdent,
+        ident,
         coupons: [{ code: couponCode, discount: 10 }],
       },
     });
@@ -278,10 +285,18 @@ export const handlers = [
 
   // POST /api/accounts/:webstoreId/baskets/:basketIdent/coupons/remove - Remove coupon
   http.post(`${ACCOUNTS_URL}/baskets/:basketIdent/coupons/remove`, ({ params }) => {
+    const ident = params.basketIdent as string;
+
+    // Update basket state - remove coupons
+    const state = basketsState.get(ident);
+    if (state) {
+      state.coupons = [];
+    }
+
     return HttpResponse.json({
       data: {
         ...mockData.basket,
-        ident: params.basketIdent,
+        ident,
         coupons: [],
       },
     });
@@ -291,11 +306,18 @@ export const handlers = [
   http.post(`${ACCOUNTS_URL}/baskets/:basketIdent/giftcards`, async ({ params, request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     const cardNumber = body.card_number as string;
+    const ident = params.basketIdent as string;
+
+    // Update basket state with giftcard
+    const state = basketsState.get(ident);
+    if (state) {
+      state.giftcards = [{ card_number: cardNumber, balance: 25 }];
+    }
 
     return HttpResponse.json({
       data: {
         ...mockData.basket,
-        ident: params.basketIdent,
+        ident,
         giftcards: [{ card_number: cardNumber, balance: 25 }],
       },
     });
@@ -303,10 +325,18 @@ export const handlers = [
 
   // POST /api/accounts/:webstoreId/baskets/:basketIdent/giftcards/remove - Remove giftcard
   http.post(`${ACCOUNTS_URL}/baskets/:basketIdent/giftcards/remove`, ({ params }) => {
+    const ident = params.basketIdent as string;
+
+    // Update basket state - remove giftcards
+    const state = basketsState.get(ident);
+    if (state) {
+      state.giftcards = [];
+    }
+
     return HttpResponse.json({
       data: {
         ...mockData.basket,
-        ident: params.basketIdent,
+        ident,
         giftcards: [],
       },
     });
@@ -316,11 +346,18 @@ export const handlers = [
   http.post(`${ACCOUNTS_URL}/baskets/:basketIdent/creator-codes`, async ({ params, request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     const creatorCode = body.creator_code as string;
+    const ident = params.basketIdent as string;
+
+    // Update basket state with creator code
+    const state = basketsState.get(ident);
+    if (state) {
+      state.creator_code = creatorCode;
+    }
 
     return HttpResponse.json({
       data: {
         ...mockData.basket,
-        ident: params.basketIdent,
+        ident,
         creator_code: creatorCode,
       },
     });
@@ -328,10 +365,18 @@ export const handlers = [
 
   // POST /api/accounts/:webstoreId/baskets/:basketIdent/creator-codes/remove - Remove creator code
   http.post(`${ACCOUNTS_URL}/baskets/:basketIdent/creator-codes/remove`, ({ params }) => {
+    const ident = params.basketIdent as string;
+
+    // Update basket state - remove creator code
+    const state = basketsState.get(ident);
+    if (state) {
+      state.creator_code = null;
+    }
+
     return HttpResponse.json({
       data: {
         ...mockData.basket,
-        ident: params.basketIdent,
+        ident,
         creator_code: null,
       },
     });
@@ -510,3 +555,188 @@ export const handlers = [
     });
   }),
 ];
+
+/**
+ * Webstore with logo for testing logo transformation
+ */
+export const mockWebstoreWithLogo = {
+  ...mockData.webstore,
+  logo: 'https://cdn.tebex.io/stores/test/logo.png',
+};
+
+// ============================================================================
+// ERROR HANDLERS FOR NETWORK ERROR TESTING
+// ============================================================================
+
+/**
+ * Create a handler that returns HTTP 500 Internal Server Error
+ */
+export function createServerErrorHandler(
+  method: 'get' | 'post' | 'put' | 'delete',
+  path: string,
+): ReturnType<typeof http.get> {
+  const handler = http[method];
+  return handler(path, () => {
+    return HttpResponse.json(
+      { error: 'Internal Server Error', message: 'Something went wrong on the server' },
+      { status: 500 },
+    );
+  });
+}
+
+/**
+ * Create a handler that returns HTTP 503 Service Unavailable
+ */
+export function createServiceUnavailableHandler(
+  method: 'get' | 'post' | 'put' | 'delete',
+  path: string,
+): ReturnType<typeof http.get> {
+  const handler = http[method];
+  return handler(path, () => {
+    return HttpResponse.json(
+      { error: 'Service Unavailable', message: 'Server is temporarily unavailable' },
+      { status: 503 },
+    );
+  });
+}
+
+/**
+ * Create a handler that returns HTTP 429 Rate Limited
+ */
+export function createRateLimitedHandler(
+  method: 'get' | 'post' | 'put' | 'delete',
+  path: string,
+): ReturnType<typeof http.get> {
+  const handler = http[method];
+  return handler(path, () => {
+    return HttpResponse.json(
+      { error: 'Rate Limited', message: 'Too many requests. Please try again later.' },
+      { status: 429 },
+    );
+  });
+}
+
+/**
+ * Create a handler that simulates network timeout
+ */
+export function createTimeoutHandler(
+  method: 'get' | 'post' | 'put' | 'delete',
+  path: string,
+  delayMs: number = 10000,
+): ReturnType<typeof http.get> {
+  const handler = http[method];
+  return handler(path, async () => {
+    await delay(delayMs);
+    return HttpResponse.error();
+  });
+}
+
+/**
+ * Create a handler that returns malformed JSON
+ */
+export function createMalformedJsonHandler(
+  method: 'get' | 'post' | 'put' | 'delete',
+  path: string,
+): ReturnType<typeof http.get> {
+  const handler = http[method];
+  return handler(path, () => {
+    return new HttpResponse('{ invalid json here', {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  });
+}
+
+/**
+ * Create a handler that returns network error
+ */
+export function createNetworkErrorHandler(
+  method: 'get' | 'post' | 'put' | 'delete',
+  path: string,
+): ReturnType<typeof http.get> {
+  const handler = http[method];
+  return handler(path, () => {
+    return HttpResponse.error();
+  });
+}
+
+/**
+ * Create a handler that returns empty response body
+ */
+export function createEmptyResponseHandler(
+  method: 'get' | 'post' | 'put' | 'delete',
+  path: string,
+): ReturnType<typeof http.get> {
+  const handler = http[method];
+  return handler(path, () => {
+    return new HttpResponse(null, { status: 200 });
+  });
+}
+
+// Pre-built error handlers for common endpoints
+export const errorHandlers = {
+  // Webstore errors
+  webstore500: createServerErrorHandler('get', ACCOUNTS_URL),
+  webstore503: createServiceUnavailableHandler('get', ACCOUNTS_URL),
+  webstoreTimeout: createTimeoutHandler('get', ACCOUNTS_URL, 100),
+
+  // Categories errors
+  categories500: createServerErrorHandler('get', `${ACCOUNTS_URL}/categories`),
+  categories503: createServiceUnavailableHandler('get', `${ACCOUNTS_URL}/categories`),
+  categoriesTimeout: createTimeoutHandler('get', `${ACCOUNTS_URL}/categories`, 100),
+
+  // Packages errors
+  packages500: createServerErrorHandler('get', `${ACCOUNTS_URL}/packages`),
+  packages503: createServiceUnavailableHandler('get', `${ACCOUNTS_URL}/packages`),
+
+  // Basket creation errors
+  basketCreate500: createServerErrorHandler('post', `${ACCOUNTS_URL}/baskets`),
+  basketCreate503: createServiceUnavailableHandler('post', `${ACCOUNTS_URL}/baskets`),
+  basketCreate429: createRateLimitedHandler('post', `${ACCOUNTS_URL}/baskets`),
+
+  // Add package errors
+  addPackage500: createServerErrorHandler('post', `${BASKETS_URL}/packages`),
+  addPackage503: createServiceUnavailableHandler('post', `${BASKETS_URL}/packages`),
+
+  // Remove package errors
+  removePackage500: createServerErrorHandler('post', `${BASKETS_URL}/packages/remove`),
+  removePackage503: createServiceUnavailableHandler('post', `${BASKETS_URL}/packages/remove`),
+
+  // Update quantity errors
+  updateQuantity500: createServerErrorHandler('put', `${BASKETS_URL}/packages/:packageId`),
+  updateQuantity503: createServiceUnavailableHandler('put', `${BASKETS_URL}/packages/:packageId`),
+
+  // Coupon errors
+  couponApply500: createServerErrorHandler('post', `${ACCOUNTS_URL}/baskets/:basketIdent/coupons`),
+  couponRemove500: createServerErrorHandler(
+    'post',
+    `${ACCOUNTS_URL}/baskets/:basketIdent/coupons/remove`,
+  ),
+
+  // Gift card errors
+  giftcardApply500: createServerErrorHandler(
+    'post',
+    `${ACCOUNTS_URL}/baskets/:basketIdent/giftcards`,
+  ),
+  giftcardRemove500: createServerErrorHandler(
+    'post',
+    `${ACCOUNTS_URL}/baskets/:basketIdent/giftcards/remove`,
+  ),
+
+  // Creator code errors
+  creatorCodeApply500: createServerErrorHandler(
+    'post',
+    `${ACCOUNTS_URL}/baskets/:basketIdent/creator-codes`,
+  ),
+  creatorCodeRemove500: createServerErrorHandler(
+    'post',
+    `${ACCOUNTS_URL}/baskets/:basketIdent/creator-codes/remove`,
+  ),
+};
+
+/**
+ * Handler that returns webstore with logo
+ */
+export const webstoreWithLogoHandler = http.get(ACCOUNTS_URL, () => {
+  return HttpResponse.json({ data: mockWebstoreWithLogo });
+});
