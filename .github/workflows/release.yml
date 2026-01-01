@@ -37,7 +37,7 @@ jobs:
     needs: quality
     permissions:
       contents: read
-      id-token: write # Obligatoire pour OIDC
+      id-token: write
 
     steps:
       - name: Checkout repository
@@ -62,5 +62,3 @@ jobs:
 
       - name: Publish to npm
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
