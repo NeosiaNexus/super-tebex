@@ -7,6 +7,58 @@ const ACCOUNTS_URL = `${BASE_URL}/accounts/:webstoreId`;
 const BASKETS_URL = `${BASE_URL}/baskets/:basketIdent`;
 
 /**
+ * Mock package from categories
+ */
+interface MockPackage {
+  id: number;
+  name: string;
+  description: string;
+  type: string;
+  base_price: number;
+  sales_price: number;
+  total_price: number;
+  currency: string;
+  image: null;
+  category: { id: number; name: string };
+  discount: number;
+  gift_username_required: boolean;
+}
+
+/**
+ * In-memory state for baskets during tests
+ * Maps basketIdent to basket data with packages
+ */
+interface BasketPackageState {
+  id: number;
+  name: string;
+  description: string;
+  base_price: number;
+  in_basket: {
+    quantity: number;
+    price: number;
+    gift_username: string | null;
+  };
+}
+
+interface BasketState {
+  ident: string;
+  username: string | null;
+  packages: BasketPackageState[];
+  coupons: Array<{ code: string; discount: number }>;
+  giftcards: Array<{ card_number: string; balance: number }>;
+  creator_code: string | null;
+}
+
+const basketsState = new Map<string, BasketState>();
+
+/**
+ * Reset basket state between tests
+ */
+export function resetMockState(): void {
+  basketsState.clear();
+}
+
+/**
  * Mock data for tests
  */
 export const mockData = {
@@ -157,22 +209,51 @@ export const handlers = [
   http.post(`${ACCOUNTS_URL}/baskets`, async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>;
     const username = body.username as string | undefined;
+    const ident = `basket-${Date.now()}`;
+
+    // Store initial basket state
+    basketsState.set(ident, {
+      ident,
+      username: username ?? null,
+      packages: [],
+      coupons: [],
+      giftcards: [],
+      creator_code: null,
+    });
 
     return HttpResponse.json({
       data: {
         ...mockData.basket,
         username: username ?? null,
-        ident: `basket-${Date.now()}`,
+        ident,
       },
     });
   }),
 
   // GET /api/accounts/:webstoreId/baskets/:basketIdent - Get basket
   http.get(`${ACCOUNTS_URL}/baskets/:basketIdent`, ({ params }) => {
+    const ident = params.basketIdent as string;
+    const state = basketsState.get(ident);
+
+    // Calculate total from packages
+    const packages = state?.packages ?? [];
+    const totalPrice = packages.reduce((sum, pkg) => sum + pkg.in_basket.price, 0);
+
     return HttpResponse.json({
       data: {
         ...mockData.basket,
-        ident: params.basketIdent,
+        ident,
+        packages: packages.map(pkg => ({
+          id: pkg.id,
+          name: pkg.name,
+          description: pkg.description,
+          image: null,
+          in_basket: pkg.in_basket,
+        })),
+        total_price: totalPrice,
+        coupons: state?.coupons ?? [],
+        giftcards: state?.giftcards ?? [],
+        creator_code: state?.creator_code ?? null,
       },
     });
   }),
@@ -274,9 +355,10 @@ export const handlers = [
     const body = (await request.json()) as Record<string, unknown>;
     const packageId = body.package_id as number;
     const quantity = (body.quantity as number) ?? 1;
+    const ident = params.basketIdent as string;
 
     // Find the package
-    let foundPkg = null;
+    let foundPkg: MockPackage | undefined;
     for (const category of mockData.categories) {
       const pkg = category.packages.find(p => p.id === packageId);
       if (pkg !== undefined) {
@@ -285,25 +367,58 @@ export const handlers = [
       }
     }
 
-    if (foundPkg === null) {
+    if (foundPkg === undefined) {
       return HttpResponse.json({ error: 'Package not found' }, { status: 404 });
     }
+
+    // Update basket state
+    let state = basketsState.get(ident);
+    if (!state) {
+      state = {
+        ident,
+        username: null,
+        packages: [],
+        coupons: [],
+        giftcards: [],
+        creator_code: null,
+      };
+      basketsState.set(ident, state);
+    }
+
+    // Check if package already exists
+    const existingIndex = state.packages.findIndex(p => p.id === packageId);
+    if (existingIndex >= 0) {
+      state.packages[existingIndex].in_basket.quantity += quantity;
+      state.packages[existingIndex].in_basket.price =
+        foundPkg.base_price * state.packages[existingIndex].in_basket.quantity;
+    } else {
+      state.packages.push({
+        id: foundPkg.id,
+        name: foundPkg.name,
+        description: foundPkg.description,
+        base_price: foundPkg.base_price,
+        in_basket: {
+          quantity,
+          price: foundPkg.base_price * quantity,
+          gift_username: null,
+        },
+      });
+    }
+
+    const totalPrice = state.packages.reduce((sum, pkg) => sum + pkg.in_basket.price, 0);
 
     return HttpResponse.json({
       data: {
         ...mockData.basket,
-        ident: params.basketIdent,
-        packages: [
-          {
-            ...foundPkg,
-            in_basket: {
-              quantity,
-              price: foundPkg.base_price * quantity,
-              gift_username: null,
-            },
-          },
-        ],
-        total_price: foundPkg.base_price * quantity,
+        ident,
+        packages: state.packages.map(pkg => ({
+          id: pkg.id,
+          name: pkg.name,
+          description: pkg.description,
+          image: null,
+          in_basket: pkg.in_basket,
+        })),
+        total_price: totalPrice,
       },
     });
   }),
@@ -311,14 +426,30 @@ export const handlers = [
   // POST /api/baskets/:basketIdent/packages/remove - Remove package
   http.post(`${BASKETS_URL}/packages/remove`, async ({ params, request }) => {
     const body = (await request.json()) as Record<string, unknown>;
-    // package_id is in body
+    const packageId = body.package_id as number;
+    const ident = params.basketIdent as string;
+
+    // Update basket state
+    const state = basketsState.get(ident);
+    if (state) {
+      state.packages = state.packages.filter(p => p.id !== packageId);
+    }
+
+    const packages = state?.packages ?? [];
+    const totalPrice = packages.reduce((sum, pkg) => sum + pkg.in_basket.price, 0);
 
     return HttpResponse.json({
       data: {
         ...mockData.basket,
-        ident: params.basketIdent,
-        packages: [],
-        total_price: 0,
+        ident,
+        packages: packages.map(pkg => ({
+          id: pkg.id,
+          name: pkg.name,
+          description: pkg.description,
+          image: null,
+          in_basket: pkg.in_basket,
+        })),
+        total_price: totalPrice,
       },
     });
   }),
@@ -328,9 +459,10 @@ export const handlers = [
     const body = (await request.json()) as Record<string, unknown>;
     const quantity = body.quantity as number;
     const packageId = Number(params.packageId);
+    const ident = params.basketIdent as string;
 
-    // Find the package
-    let foundPkg = null;
+    // Find the package info
+    let foundPkg: MockPackage | undefined;
     for (const category of mockData.categories) {
       const pkg = category.packages.find(p => p.id === packageId);
       if (pkg !== undefined) {
@@ -339,30 +471,31 @@ export const handlers = [
       }
     }
 
-    if (foundPkg === null) {
-      return HttpResponse.json({
-        data: {
-          ...mockData.basket,
-          ident: params.basketIdent,
-        },
-      });
+    // Update basket state
+    const state = basketsState.get(ident);
+    if (state && foundPkg !== undefined) {
+      const pkgIndex = state.packages.findIndex(p => p.id === packageId);
+      if (pkgIndex >= 0) {
+        state.packages[pkgIndex].in_basket.quantity = quantity;
+        state.packages[pkgIndex].in_basket.price = foundPkg.base_price * quantity;
+      }
     }
+
+    const packages = state?.packages ?? [];
+    const totalPrice = packages.reduce((sum, pkg) => sum + pkg.in_basket.price, 0);
 
     return HttpResponse.json({
       data: {
         ...mockData.basket,
-        ident: params.basketIdent,
-        packages: [
-          {
-            ...foundPkg,
-            in_basket: {
-              quantity,
-              price: foundPkg.base_price * quantity,
-              gift_username: null,
-            },
-          },
-        ],
-        total_price: foundPkg.base_price * quantity,
+        ident,
+        packages: packages.map(pkg => ({
+          id: pkg.id,
+          name: pkg.name,
+          description: pkg.description,
+          image: null,
+          in_basket: pkg.in_basket,
+        })),
+        total_price: totalPrice,
       },
     });
   }),

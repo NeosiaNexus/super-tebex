@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import type { Basket, BasketPackage } from 'tebex_headless';
 
 import { TebexError } from '../errors/TebexError';
@@ -56,7 +56,32 @@ export function useBasket(): UseBasketReturn {
       return tebex.getBasket(basketIdent);
     },
     enabled: basketIdent !== null,
+    retry: (failureCount, error) => {
+      // Don't retry for basket not found or expired errors
+      const tebexError = TebexError.fromUnknown(error);
+      if (
+        tebexError.code === TebexErrorCode.BASKET_NOT_FOUND ||
+        tebexError.code === TebexErrorCode.BASKET_EXPIRED
+      ) {
+        return false;
+      }
+      // Default retry logic (up to 3 times)
+      return failureCount < 3;
+    },
   });
+
+  // Effect: Clear basket ident if basket is not found or expired
+  useEffect(() => {
+    if (basketQuery.error !== null) {
+      const tebexError = TebexError.fromUnknown(basketQuery.error);
+      if (
+        tebexError.code === TebexErrorCode.BASKET_NOT_FOUND ||
+        tebexError.code === TebexErrorCode.BASKET_EXPIRED
+      ) {
+        clearBasketIdent();
+      }
+    }
+  }, [basketQuery.error, clearBasketIdent]);
 
   // Helper to create basket if needed
   const ensureBasket = useCallback(async (): Promise<string> => {
