@@ -94,6 +94,9 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
 
         tebexCheckout.on('close', () => {
           options.onClose?.();
+          // Resolve the promise when the modal is closed
+          // If payment:complete or payment:error already resolved/rejected, this is a no-op
+          resolve();
         });
 
         tebexCheckout.launch();

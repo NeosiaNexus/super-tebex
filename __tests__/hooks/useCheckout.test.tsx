@@ -294,7 +294,7 @@ describe('useCheckout', () => {
     );
   });
 
-  it('should call onClose when checkout modal is closed', async () => {
+  it('should call onClose and reset isLaunching when checkout modal is closed', async () => {
     const wrapper = createWrapper();
     const mockTebex = createMockTebexCheckout();
     vi.stubGlobal('Tebex', mockTebex);
@@ -318,23 +318,31 @@ describe('useCheckout', () => {
     const onClose = vi.fn();
     const { result: checkoutResult } = renderHook(() => useCheckout({ onClose }), { wrapper });
 
-    // Start launch
+    // Start launch (don't await - it won't resolve until event fires)
+    let launchPromise: Promise<void> | null = null;
     act(() => {
-      void checkoutResult.current.launch();
+      launchPromise = checkoutResult.current.launch();
     });
 
-    // Wait for Tebex to be initialized
+    // Wait for Tebex to be initialized and isLaunching to be true
     await waitFor(() => {
       expect(mockTebex.checkout.init).toHaveBeenCalled();
+      expect(checkoutResult.current.isLaunching).toBe(true);
     });
 
-    // Trigger close event
-    act(() => {
+    // Trigger close event (user closes modal without paying)
+    await act(async () => {
       mockTebex.triggerEvent('close');
+      await launchPromise;
     });
 
     // Verify onClose was called
     expect(onClose).toHaveBeenCalledTimes(1);
+
+    // Verify isLaunching is reset to false (this was the bug fix)
+    await waitFor(() => {
+      expect(checkoutResult.current.isLaunching).toBe(false);
+    });
   });
 
   it('should initialize Tebex.checkout with basket ident', async () => {
