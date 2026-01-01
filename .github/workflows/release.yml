@@ -37,7 +37,7 @@ jobs:
     needs: quality
     permissions:
       contents: read
-      id-token: write  # Obligatoire pour OIDC
+      id-token: write # Obligatoire pour OIDC
 
     steps:
       - name: Checkout repository
