@@ -2,22 +2,11 @@
 
 import { QueryClient, QueryClientProvider, type QueryClientConfig } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 
-import { TebexError } from '../errors/TebexError';
-import { TebexErrorCode } from '../errors/codes';
 import { initTebexClient } from '../services/api';
 import type { ResolvedTebexConfig, TebexConfig } from '../types/config';
-
-/**
- * Context value provided by TebexProvider.
- */
-interface TebexContextValue {
-  readonly config: ResolvedTebexConfig;
-  readonly queryClient: QueryClient;
-}
-
-const TebexContext = createContext<TebexContextValue | null>(null);
+import { TebexContext, type TebexContextValue } from './context';
 
 /**
  * Default query client configuration optimized for e-commerce.
@@ -123,30 +112,5 @@ export function TebexProvider({
   );
 }
 
-/**
- * Hook to access the Tebex context.
- * Must be used within a TebexProvider.
- *
- * @throws TebexError if used outside of TebexProvider
- */
-export function useTebexContext(): TebexContextValue {
-  const context = useContext(TebexContext);
-
-  if (context === null) {
-    throw new TebexError(
-      TebexErrorCode.PROVIDER_NOT_FOUND,
-      'useTebexContext must be used within TebexProvider',
-    );
-  }
-
-  return context;
-}
-
-/**
- * Hook to access just the Tebex configuration.
- * Useful when you don't need the QueryClient.
- */
-export function useTebexConfig(): ResolvedTebexConfig {
-  const { config } = useTebexContext();
-  return config;
-}
+// Re-export context hooks for backwards compatibility
+export { useTebexConfig, useTebexContext } from './context';
