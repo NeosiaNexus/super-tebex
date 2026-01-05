@@ -18,49 +18,17 @@ export interface MockWebstoreData extends WebstoreData {
  * Mock package data for testing.
  * Extends the base Package type with required fields.
  */
-export interface MockPackage extends Package {
-  readonly id: number;
-  readonly name: string;
-  readonly description: string;
-  readonly type: 'single' | 'subscription' | 'both';
-  readonly base_price: number;
-  readonly sales_price: number;
-  readonly total_price: number;
-  readonly currency: string;
-  readonly image: string | null;
-  readonly category: { id: number; name: string };
-  readonly discount: number;
-}
+export type MockPackage = Package;
 
 /**
  * Mock category data for testing.
  */
-export interface MockCategory extends Category {
-  readonly id: number;
-  readonly name: string;
-  readonly description: string;
-  readonly packages: MockPackage[];
-}
+export type MockCategory = Category;
 
 /**
  * Mock basket data for testing.
  */
-export interface MockBasket extends Basket {
-  readonly ident: string;
-  readonly complete: boolean;
-  readonly id: number;
-  readonly country: string;
-  readonly ip: string;
-  readonly username: string | null;
-  readonly base_price: { amount: number; currency: string };
-  readonly sales_tax: { amount: number; currency: string };
-  readonly total_price: number;
-  readonly packages: BasketPackage[];
-  readonly coupons: Code[];
-  readonly giftcards: GiftCardCode[];
-  readonly creator_code: string | null;
-  readonly links: { checkout: string };
-}
+export type MockBasket = Basket;
 
 /**
  * Configuration for mock data.
@@ -94,70 +62,95 @@ export const defaultMockPackages: MockPackage[] = [
     name: 'VIP Gold',
     description: 'Gold VIP membership with exclusive perks',
     type: 'single',
+    disable_gifting: false,
+    disable_quantity: false,
+    expiration_date: null,
     base_price: 9.99,
-    sales_price: 9.99,
+    sales_tax: 0,
     total_price: 9.99,
     currency: 'EUR',
     image: null,
     category: { id: 1, name: 'VIP Ranks' },
     discount: 0,
-    gift_username_required: false,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+    order: 1,
   },
   {
     id: 102,
     name: 'VIP Diamond',
     description: 'Diamond VIP membership with all perks',
     type: 'single',
+    disable_gifting: false,
+    disable_quantity: false,
+    expiration_date: null,
     base_price: 19.99,
-    sales_price: 19.99,
+    sales_tax: 0,
     total_price: 19.99,
     currency: 'EUR',
     image: null,
     category: { id: 1, name: 'VIP Ranks' },
     discount: 0,
-    gift_username_required: false,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+    order: 2,
   },
   {
     id: 201,
     name: 'Pet Pack',
     description: 'Adorable pet companions',
     type: 'single',
+    disable_gifting: false,
+    disable_quantity: false,
+    expiration_date: null,
     base_price: 4.99,
-    sales_price: 4.99,
+    sales_tax: 0,
     total_price: 4.99,
     currency: 'EUR',
     image: null,
     category: { id: 2, name: 'Cosmetics' },
     discount: 0,
-    gift_username_required: false,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+    order: 1,
   },
   {
     id: 202,
     name: 'Trail Effects',
     description: 'Particle trail effects',
     type: 'single',
+    disable_gifting: false,
+    disable_quantity: false,
+    expiration_date: null,
     base_price: 2.99,
-    sales_price: 2.99,
+    sales_tax: 0,
     total_price: 2.99,
     currency: 'EUR',
     image: null,
     category: { id: 2, name: 'Cosmetics' },
     discount: 0,
-    gift_username_required: false,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+    order: 2,
   },
   {
     id: 301,
     name: '1000 Coins',
     description: 'In-game currency pack',
     type: 'single',
+    disable_gifting: false,
+    disable_quantity: false,
+    expiration_date: null,
     base_price: 1.99,
-    sales_price: 1.99,
+    sales_tax: 0,
     total_price: 1.99,
     currency: 'EUR',
     image: null,
     category: { id: 3, name: 'Currency' },
     discount: 0,
-    gift_username_required: false,
+    created_at: '2024-01-01T00:00:00Z',
+    updated_at: '2024-01-01T00:00:00Z',
+    order: 1,
   },
 ];
 
@@ -169,18 +162,30 @@ export const defaultMockCategories: MockCategory[] = [
     id: 1,
     name: 'VIP Ranks',
     description: 'Exclusive VIP memberships',
+    parent: null,
+    order: 1,
+    display_type: 'grid',
+    slug: 'vip-ranks',
     packages: defaultMockPackages.filter(p => p.category.id === 1),
   },
   {
     id: 2,
     name: 'Cosmetics',
     description: 'Cosmetic items and effects',
+    parent: null,
+    order: 2,
+    display_type: 'grid',
+    slug: 'cosmetics',
     packages: defaultMockPackages.filter(p => p.category.id === 2),
   },
   {
     id: 3,
     name: 'Currency',
     description: 'In-game currency packs',
+    parent: null,
+    order: 3,
+    display_type: 'grid',
+    slug: 'currency',
     packages: defaultMockPackages.filter(p => p.category.id === 3),
   },
 ];
@@ -194,17 +199,24 @@ export const defaultMockBasket: MockBasket = {
   id: 1,
   country: 'US',
   ip: '127.0.0.1',
+  username_id: null,
   username: null,
-  base_price: { amount: 0, currency: 'EUR' },
-  sales_tax: { amount: 0, currency: 'EUR' },
+  cancel_url: 'https://example.com/cancel',
+  complete_url: 'https://example.com/complete',
+  complete_auto_redirect: false,
+  base_price: 0,
+  sales_tax: 0,
   total_price: 0,
+  email: '',
+  currency: 'EUR',
   packages: [],
   coupons: [],
   giftcards: [],
-  creator_code: null,
+  creator_code: '',
   links: {
     checkout: 'https://checkout.tebex.io/mock',
   },
+  custom: {},
 };
 
 /**
@@ -223,6 +235,7 @@ export function createBasketPackage(
     in_basket: {
       quantity,
       price: pkg.base_price * quantity,
+      gift_username_id: null,
       gift_username: giftUsername,
     },
   };
@@ -245,7 +258,7 @@ export function createMockBasket(
     ...defaultMockBasket,
     packages,
     total_price: totalPrice,
-    base_price: { amount: totalPrice, currency: 'EUR' },
+    base_price: totalPrice,
     ...overrides,
   };
 }
@@ -253,20 +266,18 @@ export function createMockBasket(
 /**
  * Create a mock coupon.
  */
-export function createMockCoupon(code: string, discount = 10): Code {
+export function createMockCoupon(code: string): Code {
   return {
     code,
-    discount,
   };
 }
 
 /**
  * Create a mock gift card.
  */
-export function createMockGiftCard(cardNumber: string, balance = 25): GiftCardCode {
+export function createMockGiftCard(cardNumber: string): GiftCardCode {
   return {
     card_number: cardNumber,
-    balance,
   };
 }
 
@@ -287,29 +298,29 @@ export const mockData = {
   emptyBasket: defaultMockBasket,
 
   /** Basket with one VIP Gold item */
-  basketWithOneItem: createMockBasket([{ package: defaultMockPackages[0], quantity: 1 }]),
+  basketWithOneItem: createMockBasket([{ package: defaultMockPackages[0] as MockPackage, quantity: 1 }]),
 
   /** Basket with multiple items */
   basketWithMultipleItems: createMockBasket([
-    { package: defaultMockPackages[0], quantity: 1 },
-    { package: defaultMockPackages[2], quantity: 2 },
+    { package: defaultMockPackages[0] as MockPackage, quantity: 1 },
+    { package: defaultMockPackages[2] as MockPackage, quantity: 2 },
   ]),
 
   /** Basket with coupon applied */
   basketWithCoupon: {
-    ...createMockBasket([{ package: defaultMockPackages[0], quantity: 1 }]),
-    coupons: [createMockCoupon('SAVE10', 10)],
+    ...createMockBasket([{ package: defaultMockPackages[0] as MockPackage, quantity: 1 }]),
+    coupons: [createMockCoupon('SAVE10')],
   },
 
   /** Basket with gift card applied */
   basketWithGiftCard: {
-    ...createMockBasket([{ package: defaultMockPackages[0], quantity: 1 }]),
-    giftcards: [createMockGiftCard('GIFT-1234-5678', 25)],
+    ...createMockBasket([{ package: defaultMockPackages[0] as MockPackage, quantity: 1 }]),
+    giftcards: [createMockGiftCard('GIFT-1234-5678')],
   },
 
   /** Basket with creator code */
   basketWithCreatorCode: {
-    ...createMockBasket([{ package: defaultMockPackages[0], quantity: 1 }]),
+    ...createMockBasket([{ package: defaultMockPackages[0] as MockPackage, quantity: 1 }]),
     creator_code: 'STREAMER123',
   },
 

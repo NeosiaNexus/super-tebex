@@ -16,6 +16,7 @@ export default defineConfig({
         '**/__tests__/**',
         '**/node_modules/**',
         '**/types/**',
+        '**/testing/**',
         '**/dist/**',
         '**/build/**',
         '**/coverage/**',
