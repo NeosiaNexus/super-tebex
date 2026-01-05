@@ -298,29 +298,29 @@ export const mockData = {
   emptyBasket: defaultMockBasket,
 
   /** Basket with one VIP Gold item */
-  basketWithOneItem: createMockBasket([{ package: defaultMockPackages[0] as MockPackage, quantity: 1 }]),
+  basketWithOneItem: createMockBasket([{ package: defaultMockPackages[0]!, quantity: 1 }]),
 
   /** Basket with multiple items */
   basketWithMultipleItems: createMockBasket([
-    { package: defaultMockPackages[0] as MockPackage, quantity: 1 },
-    { package: defaultMockPackages[2] as MockPackage, quantity: 2 },
+    { package: defaultMockPackages[0]!, quantity: 1 },
+    { package: defaultMockPackages[2]!, quantity: 2 },
   ]),
 
   /** Basket with coupon applied */
   basketWithCoupon: {
-    ...createMockBasket([{ package: defaultMockPackages[0] as MockPackage, quantity: 1 }]),
+    ...createMockBasket([{ package: defaultMockPackages[0]!, quantity: 1 }]),
     coupons: [createMockCoupon('SAVE10')],
   },
 
   /** Basket with gift card applied */
   basketWithGiftCard: {
-    ...createMockBasket([{ package: defaultMockPackages[0] as MockPackage, quantity: 1 }]),
+    ...createMockBasket([{ package: defaultMockPackages[0]!, quantity: 1 }]),
     giftcards: [createMockGiftCard('GIFT-1234-5678')],
   },
 
   /** Basket with creator code */
   basketWithCreatorCode: {
-    ...createMockBasket([{ package: defaultMockPackages[0] as MockPackage, quantity: 1 }]),
+    ...createMockBasket([{ package: defaultMockPackages[0]!, quantity: 1 }]),
     creator_code: 'STREAMER123',
   },
 

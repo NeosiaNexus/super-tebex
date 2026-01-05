@@ -24,8 +24,8 @@ const testingBuildConfig: BuildConfig = {
   target: 'browser',
 };
 
+// Phase 1: Build ESM with DTS generation (types only need to be generated once)
 await Promise.all([
-  // Main entry - ESM
   Bun.build({
     ...mainBuildConfig,
     plugins: [dts()],
@@ -33,14 +33,6 @@ await Promise.all([
     naming: '[dir]/[name].js',
     minify: true,
   }),
-  // Main entry - CJS
-  Bun.build({
-    ...mainBuildConfig,
-    format: 'cjs',
-    naming: '[dir]/[name].cjs',
-    minify: true,
-  }),
-  // Testing entry - ESM
   Bun.build({
     ...testingBuildConfig,
     plugins: [dts()],
@@ -48,7 +40,16 @@ await Promise.all([
     naming: '[dir]/[name].js',
     minify: true,
   }),
-  // Testing entry - CJS
+]);
+
+// Phase 2: Build CJS (no DTS needed - reuses existing .d.ts files)
+await Promise.all([
+  Bun.build({
+    ...mainBuildConfig,
+    format: 'cjs',
+    naming: '[dir]/[name].cjs',
+    minify: true,
+  }),
   Bun.build({
     ...testingBuildConfig,
     format: 'cjs',
