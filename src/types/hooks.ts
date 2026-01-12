@@ -42,6 +42,7 @@ export interface UseCategoriesReturn extends BaseQueryReturn<Category[]> {
   readonly categories: Category[] | null;
   readonly getByName: (name: string) => Category | undefined;
   readonly getById: (id: number) => Category | undefined;
+  readonly getBySlug: (slug: string) => Category | undefined;
 }
 
 // ============ Category ============

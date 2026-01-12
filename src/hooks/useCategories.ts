@@ -52,6 +52,11 @@ export function useCategories(options: UseCategoriesOptions = {}): UseCategories
     [query.data],
   );
 
+  const getBySlug = useMemo(
+    () => (slug: string) => query.data?.find(category => category.slug === slug),
+    [query.data],
+  );
+
   return {
     categories: query.data ?? null,
     data: query.data ?? null,
@@ -62,5 +67,6 @@ export function useCategories(options: UseCategoriesOptions = {}): UseCategories
     refetch: query.refetch,
     getByName,
     getById,
+    getBySlug,
   };
 }

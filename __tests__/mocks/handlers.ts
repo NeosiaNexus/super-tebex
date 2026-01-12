@@ -74,6 +74,7 @@ export const mockData = {
     {
       id: 1,
       name: 'VIP',
+      slug: 'vip',
       description: 'VIP packages',
       packages: [
         {
@@ -109,6 +110,7 @@ export const mockData = {
     {
       id: 2,
       name: 'Cosmetics',
+      slug: 'cosmetics',
       description: 'Cosmetic items',
       packages: [
         {

@@ -234,6 +234,7 @@ const {
   // Helpers
   getByName,   // (name: string) => Category | undefined
   getById,     // (id: number) => Category | undefined
+  getBySlug,   // (slug: string) => Category | undefined
 } = useCategories({
   includePackages: true,  // default: true
   enabled: true,          // default: true
@@ -779,7 +780,7 @@ setUsername('player_name');
 
 | Hook | Key Params | Key Returns |
 |------|------------|-------------|
-| `useCategories(opts?)` | `includePackages` | `categories`, `getById`, `getByName` |
+| `useCategories(opts?)` | `includePackages` | `categories`, `getById`, `getByName`, `getBySlug` |
 | `useCategory(opts)` | `id` | `category` |
 | `usePackages(opts?)` | `categoryId` | `packages`, `getById`, `getByName` |
 | `usePackage(opts)` | `id` | `package` |

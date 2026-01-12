@@ -66,6 +66,27 @@ describe('useCategories', () => {
     expect(unknownCategory).toBeUndefined();
   });
 
+  it('should find category by slug', async () => {
+    const { result } = renderHook(() => useCategories(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    const vipCategory = result.current.getBySlug('vip');
+    expect(vipCategory).toBeDefined();
+    expect(vipCategory?.id).toBe(1);
+
+    const cosmeticsCategory = result.current.getBySlug('cosmetics');
+    expect(cosmeticsCategory).toBeDefined();
+    expect(cosmeticsCategory?.id).toBe(2);
+
+    const unknownCategory = result.current.getBySlug('unknown-slug');
+    expect(unknownCategory).toBeUndefined();
+  });
+
   it('should respect enabled option', async () => {
     const { result } = renderHook(() => useCategories({ enabled: false }), {
       wrapper: createWrapper(),
