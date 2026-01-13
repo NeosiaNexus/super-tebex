@@ -33,6 +33,8 @@
     "declarationMap": true,
     "sourceMap": true,
     "emitDeclarationOnly": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
 
     "baseUrl": ".",
     "paths": {

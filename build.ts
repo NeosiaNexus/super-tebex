@@ -1,5 +1,4 @@
 import type { BuildConfig } from 'bun';
-import dts from 'bun-plugin-dts';
 
 // CRITICAL: This build script MUST be run with NODE_ENV=production
 // See package.json "build" script for the correct invocation
@@ -38,38 +37,39 @@ const testingBuildConfig: BuildConfig = {
   outdir: './dist/testing',
 };
 
-// Phase 1: Build ESM with DTS generation (types only need to be generated once)
+// Build all bundles in parallel (ESM + CJS for main and testing)
+// Types are generated separately via tsc for better performance
 await Promise.all([
+  // Main ESM
   Bun.build({
     ...mainBuildConfig,
-    plugins: [dts()],
     format: 'esm',
     naming: '[dir]/[name].js',
     minify: true,
   }),
-  Bun.build({
-    ...testingBuildConfig,
-    plugins: [dts()],
-    format: 'esm',
-    naming: '[dir]/[name].js',
-    minify: true,
-  }),
-]);
-
-// Phase 2: Build CJS (no DTS needed - reuses existing .d.ts files)
-await Promise.all([
+  // Main CJS
   Bun.build({
     ...mainBuildConfig,
     format: 'cjs',
     naming: '[dir]/[name].cjs',
     minify: true,
   }),
+  // Testing ESM
+  Bun.build({
+    ...testingBuildConfig,
+    format: 'esm',
+    naming: '[dir]/[name].js',
+    minify: true,
+  }),
+  // Testing CJS
   Bun.build({
     ...testingBuildConfig,
     format: 'cjs',
     naming: '[dir]/[name].cjs',
     minify: true,
   }),
+  // Generate TypeScript declarations with tsc (faster than bun-plugin-dts)
+  Bun.$`tsc --emitDeclarationOnly`,
 ]);
 
 // Phase 3: Inject 'use client' directive for Next.js App Router compatibility
