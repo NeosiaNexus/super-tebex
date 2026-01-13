@@ -1,39 +1,51 @@
 'use client';
 
 import { QueryClient, QueryClientProvider, type QueryClientConfig } from '@tanstack/react-query';
-import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { initTebexClient } from '../services/api';
 import type { ResolvedTebexConfig, TebexConfig } from '../types/config';
 import { TebexContext, type TebexContextValue } from './context';
 
-// Lazy load devtools to prevent SSR issues with jsxDEV
-const ReactQueryDevtools = lazy(() =>
-  import('@tanstack/react-query-devtools').then((mod) => ({
-    default: mod.ReactQueryDevtools,
-  })),
-);
-
 /**
  * Client-only wrapper for React Query Devtools.
- * Prevents SSR hydration issues by only rendering on the client.
+ * Uses dynamic import inside useEffect to completely exclude devtools from SSR bundle.
+ * This prevents the jsxDEV error that occurs when devtools code runs on the server.
+ *
+ * Safety measures:
+ * 1. useEffect only runs on client (not during SSR)
+ * 2. typeof window check as extra safety
+ * 3. try/catch to handle missing devtools in production
  */
 function DevtoolsWrapper(): ReactNode {
-  const [mounted, setMounted] = useState(false);
+  const [DevtoolsComponent, setDevtoolsComponent] = useState<React.ComponentType<{
+    initialIsOpen?: boolean;
+  }> | null>(null);
 
   useEffect(() => {
-    setMounted(true);
+    // Triple safety: useEffect + window check + try/catch
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const loadDevtools = async (): Promise<void> => {
+      try {
+        const mod = await import('@tanstack/react-query-devtools');
+        setDevtoolsComponent(() => mod.ReactQueryDevtools);
+      } catch {
+        // Devtools not available (e.g., not installed in production)
+        // Silently ignore - devtools are optional
+      }
+    };
+
+    void loadDevtools();
   }, []);
 
-  if (!mounted) {
+  if (!DevtoolsComponent) {
     return null;
   }
 
-  return (
-    <Suspense fallback={null}>
-      <ReactQueryDevtools initialIsOpen={false} />
-    </Suspense>
-  );
+  return <DevtoolsComponent initialIsOpen={false} />;
 }
 
 /**

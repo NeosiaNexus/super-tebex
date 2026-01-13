@@ -158,4 +158,68 @@ describe('TebexProvider', () => {
 
     expect(result.current.queryClient).toBe(externalQueryClient);
   });
+
+  describe('DevtoolsWrapper SSR Safety', () => {
+    it('should not render devtools on initial render (SSR-safe)', () => {
+      const configWithDevtools: TebexConfig = {
+        publicKey: 'test-key',
+        baseUrl: 'https://example.com',
+        devtools: true,
+      };
+
+      const { container } = render(
+        <TebexProvider config={configWithDevtools}>
+          <div data-testid="child">Content</div>
+        </TebexProvider>,
+      );
+
+      // On initial render, devtools should not be present
+      // The dynamic import happens in useEffect which runs after render
+      expect(screen.getByTestId('child')).toBeInTheDocument();
+
+      // Devtools button should not exist on first render
+      const devtoolsButton = container.querySelector('[aria-label*="React Query"]');
+      expect(devtoolsButton).toBeNull();
+    });
+
+    it('should not render devtools when devtools config is false', async () => {
+      const configWithoutDevtools: TebexConfig = {
+        publicKey: 'test-key',
+        baseUrl: 'https://example.com',
+        devtools: false,
+      };
+
+      const { container } = render(
+        <TebexProvider config={configWithoutDevtools}>
+          <div data-testid="child">Content</div>
+        </TebexProvider>,
+      );
+
+      expect(screen.getByTestId('child')).toBeInTheDocument();
+
+      // Wait a bit to ensure useEffect would have run if devtools was enabled
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Devtools should never appear when disabled
+      const devtoolsButton = container.querySelector('[aria-label*="React Query"]');
+      expect(devtoolsButton).toBeNull();
+    });
+
+    it('should render without errors when devtools is enabled', () => {
+      const configWithDevtools: TebexConfig = {
+        publicKey: 'test-key',
+        baseUrl: 'https://example.com',
+        devtools: true,
+      };
+
+      // This should not throw any errors - validates SSR safety
+      expect(() => {
+        render(
+          <TebexProvider config={configWithDevtools}>
+            <div>Content</div>
+          </TebexProvider>,
+        );
+      }).not.toThrow();
+    });
+  });
 });
