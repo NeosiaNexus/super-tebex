@@ -8,6 +8,7 @@ const external = [
   'sonner',
   'tebex_headless',
   '@tanstack/react-query',
+  '@tanstack/react-query-devtools',
 ];
 
 const mainBuildConfig: BuildConfig = {
@@ -57,3 +58,24 @@ await Promise.all([
     minify: true,
   }),
 ]);
+
+// Phase 3: Inject 'use client' directive for Next.js App Router compatibility
+// This directive is stripped during bundling but is required for client components
+const USE_CLIENT_DIRECTIVE = "'use client';\n";
+
+const filesToInject = [
+  './dist/index.js',
+  './dist/index.cjs',
+  './dist/testing/index.js',
+  './dist/testing/index.cjs',
+];
+
+await Promise.all(
+  filesToInject.map(async (filePath) => {
+    const file = Bun.file(filePath);
+    if (await file.exists()) {
+      const content = await file.text();
+      await Bun.write(filePath, USE_CLIENT_DIRECTIVE + content);
+    }
+  }),
+);
