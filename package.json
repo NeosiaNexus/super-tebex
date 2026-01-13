@@ -82,7 +82,7 @@
     "react-dom": "^18.3.1",
     "tebex_headless": "^1.15.1",
     "typescript": "^5.7.0",
-    "vitest": "^3.2.4",
+    "vitest": "^4.0.17",
     "zustand": "^5.0.0"
   },
   "keywords": [
