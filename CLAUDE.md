@@ -130,8 +130,9 @@ chore: update dependencies
 - Provider pattern: All hooks require `TebexProvider` ancestor
 - Zustand stores are persisted (localStorage) for basket/user
 - QueryClient is created once per TebexProvider instance
-- DevTools auto-enabled in development mode
+- DevTools NOT included (consumers add their own to avoid jsxDEV production errors)
 - Hooks expose `errorCode` for i18n-friendly error handling
+- Build uses `NODE_ENV=production` to force production JSX runtime
 
 ## Before Committing
 

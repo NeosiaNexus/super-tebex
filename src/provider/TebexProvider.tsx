@@ -1,52 +1,11 @@
 'use client';
 
 import { QueryClient, QueryClientProvider, type QueryClientConfig } from '@tanstack/react-query';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 
 import { initTebexClient } from '../services/api';
 import type { ResolvedTebexConfig, TebexConfig } from '../types/config';
 import { TebexContext, type TebexContextValue } from './context';
-
-/**
- * Client-only wrapper for React Query Devtools.
- * Uses dynamic import inside useEffect to completely exclude devtools from SSR bundle.
- * This prevents the jsxDEV error that occurs when devtools code runs on the server.
- *
- * Safety measures:
- * 1. useEffect only runs on client (not during SSR)
- * 2. typeof window check as extra safety
- * 3. try/catch to handle missing devtools in production
- */
-function DevtoolsWrapper(): ReactNode {
-  const [DevtoolsComponent, setDevtoolsComponent] = useState<React.ComponentType<{
-    initialIsOpen?: boolean;
-  }> | null>(null);
-
-  useEffect(() => {
-    // Triple safety: useEffect + window check + try/catch
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    const loadDevtools = async (): Promise<void> => {
-      try {
-        const mod = await import('@tanstack/react-query-devtools');
-        setDevtoolsComponent(() => mod.ReactQueryDevtools);
-      } catch {
-        // Devtools not available (e.g., not installed in production)
-        // Silently ignore - devtools are optional
-      }
-    };
-
-    void loadDevtools();
-  }, []);
-
-  if (!DevtoolsComponent) {
-    return null;
-  }
-
-  return <DevtoolsComponent initialIsOpen={false} />;
-}
 
 /**
  * Default query client configuration optimized for e-commerce.
@@ -81,7 +40,6 @@ function resolveConfig(config: TebexConfig): ResolvedTebexConfig {
     completeUrl: `${baseUrl}${completePath}`,
     cancelUrl: `${baseUrl}${cancelPath}`,
     onError: config.onError,
-    devtools: config.devtools ?? process.env.NODE_ENV === 'development',
   };
 }
 
@@ -101,6 +59,23 @@ interface TebexProviderProps {
  * This provider must wrap your application to use any Tebex hooks.
  * It initializes the Tebex client, sets up React Query, and provides
  * the configuration context.
+ *
+ * NOTE: React Query Devtools are NOT included in this library to avoid
+ * production build issues with jsxDEV. If you need devtools, add them
+ * manually in your application:
+ *
+ * @example
+ * ```tsx
+ * import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+ *
+ * // In your app layout or root component:
+ * <TebexProvider config={config}>
+ *   {children}
+ *   {process.env.NODE_ENV === 'development' && (
+ *     <ReactQueryDevtools initialIsOpen={false} />
+ *   )}
+ * </TebexProvider>
+ * ```
  *
  * @example
  * ```tsx
@@ -144,10 +119,7 @@ export function TebexProvider({
 
   return (
     <TebexContext.Provider value={contextValue}>
-      <QueryClientProvider client={queryClient}>
-        {children}
-        {resolvedConfig.devtools && <DevtoolsWrapper />}
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </TebexContext.Provider>
   );
 }

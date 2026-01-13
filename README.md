@@ -16,8 +16,6 @@
 - **Provider Pattern** - Single provider, granular hooks
 - **Error Codes** - i18n-friendly error handling with `TebexErrorCode` enum
 - **Optimistic Updates** - Instant UI feedback on basket mutations
-- **React Query DevTools** - Automatic in development mode
-
 ## Installation
 
 ```bash
@@ -140,9 +138,10 @@ interface TebexConfig {
     cancel?: string;       // Cancel redirect path (default: '/shop/cancel')
   };
   onError?: (error: TebexError) => void;  // Global error callback
-  devtools?: boolean;      // Enable React Query DevTools (default: true in dev)
 }
 ```
+
+> **Note**: React Query DevTools are not included. To add them, install `@tanstack/react-query-devtools` and render them manually in development.
 
 ---
 

@@ -1,6 +1,17 @@
 import type { BuildConfig } from 'bun';
 import dts from 'bun-plugin-dts';
 
+// CRITICAL: This build script MUST be run with NODE_ENV=production
+// See package.json "build" script for the correct invocation
+//
+// Why: Bun has a regression (https://github.com/oven-sh/bun/issues/23959)
+// where Bun.build uses react-jsxdev (development) instead of react-jsx (production)
+// The jsxDEV function doesn't exist in production React builds, causing runtime errors
+//
+// Setting NODE_ENV=production in the shell ensures:
+// 1. Bun uses the production JSX runtime (jsx instead of jsxDEV)
+// 2. process.env.NODE_ENV checks in the code are NOT replaced (preserving tree-shaking for consumers)
+
 const external = [
   'react',
   'react-dom',
@@ -8,21 +19,23 @@ const external = [
   'sonner',
   'tebex_headless',
   '@tanstack/react-query',
-  '@tanstack/react-query-devtools',
 ];
 
-const mainBuildConfig: BuildConfig = {
-  entrypoints: ['./src/index.ts'],
-  outdir: './dist',
+const sharedConfig: Partial<BuildConfig> = {
   external,
   target: 'browser',
 };
 
+const mainBuildConfig: BuildConfig = {
+  ...sharedConfig,
+  entrypoints: ['./src/index.ts'],
+  outdir: './dist',
+};
+
 const testingBuildConfig: BuildConfig = {
+  ...sharedConfig,
   entrypoints: ['./src/testing/index.ts'],
   outdir: './dist/testing',
-  external,
-  target: 'browser',
 };
 
 // Phase 1: Build ESM with DTS generation (types only need to be generated once)

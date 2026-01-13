@@ -80,34 +80,6 @@ describe('TebexProvider', () => {
     expect(screen.getByText('Child content')).toBeInTheDocument();
   });
 
-  it('should enable devtools in development', () => {
-    const configWithDevtools: TebexConfig = {
-      publicKey: 'test-key',
-      baseUrl: 'https://example.com',
-      devtools: true,
-    };
-
-    const { result } = renderHook(() => useTebexConfig(), {
-      wrapper: createWrapper(configWithDevtools),
-    });
-
-    expect(result.current.devtools).toBe(true);
-  });
-
-  it('should disable devtools when explicitly set to false', () => {
-    const configWithoutDevtools: TebexConfig = {
-      publicKey: 'test-key',
-      baseUrl: 'https://example.com',
-      devtools: false,
-    };
-
-    const { result } = renderHook(() => useTebexConfig(), {
-      wrapper: createWrapper(configWithoutDevtools),
-    });
-
-    expect(result.current.devtools).toBe(false);
-  });
-
   it('should accept onError callback', () => {
     const onError = vi.fn();
     const configWithOnError: TebexConfig = {
@@ -159,67 +131,66 @@ describe('TebexProvider', () => {
     expect(result.current.queryClient).toBe(externalQueryClient);
   });
 
-  describe('DevtoolsWrapper SSR Safety', () => {
-    it('should not render devtools on initial render (SSR-safe)', () => {
-      const configWithDevtools: TebexConfig = {
+  describe('Config resolution edge cases', () => {
+    it('should handle baseUrl without protocol', () => {
+      const config: TebexConfig = {
         publicKey: 'test-key',
-        baseUrl: 'https://example.com',
-        devtools: true,
+        baseUrl: 'example.com',
       };
 
-      const { container } = render(
-        <TebexProvider config={configWithDevtools}>
-          <div data-testid="child">Content</div>
-        </TebexProvider>,
-      );
+      const { result } = renderHook(() => useTebexConfig(), {
+        wrapper: createWrapper(config),
+      });
 
-      // On initial render, devtools should not be present
-      // The dynamic import happens in useEffect which runs after render
-      expect(screen.getByTestId('child')).toBeInTheDocument();
-
-      // Devtools button should not exist on first render
-      const devtoolsButton = container.querySelector('[aria-label*="React Query"]');
-      expect(devtoolsButton).toBeNull();
+      expect(result.current.baseUrl).toBe('example.com');
     });
 
-    it('should not render devtools when devtools config is false', async () => {
-      const configWithoutDevtools: TebexConfig = {
+    it('should handle multiple trailing slashes', () => {
+      const config: TebexConfig = {
         publicKey: 'test-key',
-        baseUrl: 'https://example.com',
-        devtools: false,
+        baseUrl: 'https://example.com///',
       };
 
-      const { container } = render(
-        <TebexProvider config={configWithoutDevtools}>
-          <div data-testid="child">Content</div>
-        </TebexProvider>,
-      );
+      const { result } = renderHook(() => useTebexConfig(), {
+        wrapper: createWrapper(config),
+      });
 
-      expect(screen.getByTestId('child')).toBeInTheDocument();
-
-      // Wait a bit to ensure useEffect would have run if devtools was enabled
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Devtools should never appear when disabled
-      const devtoolsButton = container.querySelector('[aria-label*="React Query"]');
-      expect(devtoolsButton).toBeNull();
+      // Only one trailing slash should be removed
+      expect(result.current.baseUrl).toBe('https://example.com//');
     });
 
-    it('should render without errors when devtools is enabled', () => {
-      const configWithDevtools: TebexConfig = {
+    it('should handle empty URLs object', () => {
+      const config: TebexConfig = {
         publicKey: 'test-key',
         baseUrl: 'https://example.com',
-        devtools: true,
+        urls: {},
       };
 
-      // This should not throw any errors - validates SSR safety
-      expect(() => {
-        render(
-          <TebexProvider config={configWithDevtools}>
-            <div>Content</div>
-          </TebexProvider>,
-        );
-      }).not.toThrow();
+      const { result } = renderHook(() => useTebexConfig(), {
+        wrapper: createWrapper(config),
+      });
+
+      // Should use defaults
+      expect(result.current.completeUrl).toBe('https://example.com/shop/complete');
+      expect(result.current.cancelUrl).toBe('https://example.com/shop/cancel');
+    });
+
+    it('should handle partial URLs object', () => {
+      const config: TebexConfig = {
+        publicKey: 'test-key',
+        baseUrl: 'https://example.com',
+        urls: {
+          complete: '/custom-complete',
+          // cancel is missing
+        },
+      };
+
+      const { result } = renderHook(() => useTebexConfig(), {
+        wrapper: createWrapper(config),
+      });
+
+      expect(result.current.completeUrl).toBe('https://example.com/custom-complete');
+      expect(result.current.cancelUrl).toBe('https://example.com/shop/cancel');
     });
   });
 });

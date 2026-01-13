@@ -12,6 +12,19 @@ export interface TebexUrls {
 
 /**
  * Main configuration for TebexProvider.
+ *
+ * NOTE: React Query DevTools are NOT included in this library to avoid
+ * production build issues. If you need devtools, add them manually:
+ *
+ * @example
+ * ```tsx
+ * import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+ *
+ * <TebexProvider config={config}>
+ *   {children}
+ *   {process.env.NODE_ENV === 'development' && <ReactQueryDevtools />}
+ * </TebexProvider>
+ * ```
  */
 export interface TebexConfig {
   /** Your Tebex public/webstore key */
@@ -22,8 +35,6 @@ export interface TebexConfig {
   readonly urls?: TebexUrls | undefined;
   /** Global error handler callback */
   readonly onError?: ((error: TebexError) => void) | undefined;
-  /** Enable React Query DevTools. Default: true in development */
-  readonly devtools?: boolean | undefined;
 }
 
 /**
@@ -35,5 +46,4 @@ export interface ResolvedTebexConfig {
   readonly completeUrl: string;
   readonly cancelUrl: string;
   readonly onError?: ((error: TebexError) => void) | undefined;
-  readonly devtools: boolean;
 }

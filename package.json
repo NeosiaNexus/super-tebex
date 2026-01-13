@@ -1,6 +1,6 @@
 {
   "name": "@neosianexus/super-tebex",
-  "version": "3.1.7",
+  "version": "3.2.0",
   "description": "Tebex Headless SDK optimized for Next.js App Router with TanStack Query",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -27,7 +27,7 @@
     "provenance": true
   },
   "scripts": {
-    "build": "bun run build.ts",
+    "build": "NODE_ENV=production bun run build.ts",
     "dev": "bun run build.ts --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --fix",

@@ -97,7 +97,6 @@ function resolveMockConfig(
     completeUrl: `${cleanBaseUrl}/shop/complete`,
     cancelUrl: `${cleanBaseUrl}/shop/cancel`,
     onError,
-    devtools: false,
   };
 }
 

@@ -675,6 +675,38 @@ export function createEmptyResponseHandler(
   });
 }
 
+/**
+ * Create a handler that returns basket not found error
+ */
+export function createBasketNotFoundHandler(
+  method: 'get' | 'post' | 'put' | 'delete',
+  path: string,
+): ReturnType<typeof http.get> {
+  const handler = http[method];
+  return handler(path, () => {
+    return HttpResponse.json(
+      { error: 'Basket not found', message: 'The requested basket was not found' },
+      { status: 404 },
+    );
+  });
+}
+
+/**
+ * Create a handler that returns basket expired error
+ */
+export function createBasketExpiredHandler(
+  method: 'get' | 'post' | 'put' | 'delete',
+  path: string,
+): ReturnType<typeof http.get> {
+  const handler = http[method];
+  return handler(path, () => {
+    return HttpResponse.json(
+      { error: 'Basket expired', message: 'The basket has expired' },
+      { status: 410 },
+    );
+  });
+}
+
 // Pre-built error handlers for common endpoints
 export const errorHandlers = {
   // Webstore errors
@@ -734,6 +766,10 @@ export const errorHandlers = {
     'post',
     `${ACCOUNTS_URL}/baskets/:basketIdent/creator-codes/remove`,
   ),
+
+  // Basket not found / expired errors
+  basketGetNotFound: createBasketNotFoundHandler('get', `${ACCOUNTS_URL}/baskets/:basketIdent`),
+  basketGetExpired: createBasketExpiredHandler('get', `${ACCOUNTS_URL}/baskets/:basketIdent`),
 };
 
 /**

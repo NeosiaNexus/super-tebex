@@ -854,4 +854,170 @@ describe('useBasket', () => {
     expect(tebexError.message).toMatch(/username/i);
     expect(tebexError.name).toBe('TebexError');
   });
+
+  // ============================================================================
+  // NEW TESTS: Duplicate package addition (lines 153-163 coverage)
+  // ============================================================================
+
+  it('should increment quantity when adding duplicate package', async () => {
+    const wrapper = createWrapper();
+
+    // Set username
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    act(() => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add package 101 with quantity 2
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101, quantity: 2 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+      expect(basketResult.current.packages).toHaveLength(1);
+    });
+
+    // Verify initial quantity is 2
+    expect(basketResult.current.packages[0].id).toBe(101);
+    expect(basketResult.current.packages[0].in_basket.quantity).toBe(2);
+
+    // Add the SAME package again with quantity 3
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101, quantity: 3 });
+    });
+
+    // Wait for the update - package count should still be 1
+    await waitFor(() => {
+      expect(basketResult.current.packages).toHaveLength(1);
+    });
+
+    // Quantity should be 5 (2 + 3) after optimistic update and server response
+    await waitFor(() => {
+      expect(basketResult.current.packages[0].in_basket.quantity).toBe(5);
+    });
+
+    // Total itemCount should reflect the merged quantity
+    expect(basketResult.current.itemCount).toBe(5);
+  });
+
+  it('should merge duplicate packages with default quantity', async () => {
+    const wrapper = createWrapper();
+
+    // Set username
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    act(() => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add package 101 with default quantity (1)
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+      expect(basketResult.current.packages).toHaveLength(1);
+    });
+
+    expect(basketResult.current.packages[0].in_basket.quantity).toBe(1);
+
+    // Add the same package again with default quantity
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    // Should still be 1 package
+    await waitFor(() => {
+      expect(basketResult.current.packages).toHaveLength(1);
+    });
+
+    // Quantity should be 2 (1 + 1)
+    await waitFor(() => {
+      expect(basketResult.current.packages[0].in_basket.quantity).toBe(2);
+    });
+  });
+
+  it('should add new package alongside existing one', async () => {
+    const wrapper = createWrapper();
+
+    // Set username
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    act(() => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add first package
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101, quantity: 2 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.packages).toHaveLength(1);
+    });
+
+    // Add different package (should create new entry, not merge)
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 102, quantity: 3 });
+    });
+
+    // Should now have 2 packages
+    await waitFor(() => {
+      expect(basketResult.current.packages).toHaveLength(2);
+    });
+
+    // Verify each package has correct quantity
+    const pkg101 = basketResult.current.packages.find(p => p.id === 101);
+    const pkg102 = basketResult.current.packages.find(p => p.id === 102);
+
+    expect(pkg101?.in_basket.quantity).toBe(2);
+    expect(pkg102?.in_basket.quantity).toBe(3);
+    expect(basketResult.current.itemCount).toBe(5);
+  });
+
+  it('should handle multiple duplicate additions in sequence', async () => {
+    const wrapper = createWrapper();
+
+    // Set username
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    act(() => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add package 101 three times in sequence
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101, quantity: 1 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.packages).toHaveLength(1);
+    });
+
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101, quantity: 2 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.packages[0].in_basket.quantity).toBe(3);
+    });
+
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101, quantity: 4 });
+    });
+
+    // Final quantity should be 7 (1 + 2 + 4)
+    await waitFor(() => {
+      expect(basketResult.current.packages[0].in_basket.quantity).toBe(7);
+    });
+
+    expect(basketResult.current.itemCount).toBe(7);
+  });
 });
