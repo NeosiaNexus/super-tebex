@@ -71,7 +71,7 @@ const filesToInject = [
 ];
 
 await Promise.all(
-  filesToInject.map(async (filePath) => {
+  filesToInject.map(async filePath => {
     const file = Bun.file(filePath);
     if (await file.exists()) {
       const content = await file.text();

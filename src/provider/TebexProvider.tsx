@@ -1,12 +1,40 @@
 'use client';
 
 import { QueryClient, QueryClientProvider, type QueryClientConfig } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useMemo, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { initTebexClient } from '../services/api';
 import type { ResolvedTebexConfig, TebexConfig } from '../types/config';
 import { TebexContext, type TebexContextValue } from './context';
+
+// Lazy load devtools to prevent SSR issues with jsxDEV
+const ReactQueryDevtools = lazy(() =>
+  import('@tanstack/react-query-devtools').then((mod) => ({
+    default: mod.ReactQueryDevtools,
+  })),
+);
+
+/**
+ * Client-only wrapper for React Query Devtools.
+ * Prevents SSR hydration issues by only rendering on the client.
+ */
+function DevtoolsWrapper(): ReactNode {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
+
+  return (
+    <Suspense fallback={null}>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </Suspense>
+  );
+}
 
 /**
  * Default query client configuration optimized for e-commerce.
@@ -106,7 +134,7 @@ export function TebexProvider({
     <TebexContext.Provider value={contextValue}>
       <QueryClientProvider client={queryClient}>
         {children}
-        {resolvedConfig.devtools && <ReactQueryDevtools initialIsOpen={false} />}
+        {resolvedConfig.devtools && <DevtoolsWrapper />}
       </QueryClientProvider>
     </TebexContext.Provider>
   );
