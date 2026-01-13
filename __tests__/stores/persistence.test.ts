@@ -113,13 +113,14 @@ describe('Store Persistence', () => {
       expect(useUserStore.getState().username).toBe('TestPlayer');
     });
 
-    it('should allow both stores to be cleared independently', () => {
+    it('should auto-clear basket when clearing username (logout)', () => {
       useBasketStore.getState().setBasketIdent('basket-123');
       useUserStore.getState().setUsername('TestPlayer');
 
       useUserStore.getState().clearUsername();
 
-      expect(useBasketStore.getState().basketIdent).toBe('basket-123');
+      // Basket should be auto-cleared when username is cleared
+      expect(useBasketStore.getState().basketIdent).toBeNull();
       expect(useUserStore.getState().username).toBeNull();
     });
   });

@@ -9,7 +9,7 @@ import { createWrapper } from '../utils/test-utils';
 
 describe('Multi-Hook Integration', () => {
   describe('User and Basket lifecycle', () => {
-    it('should clear basket when username is cleared', async () => {
+    it('should auto-clear basket when username is cleared', async () => {
       const wrapper = createWrapper();
 
       // Set up user
@@ -30,25 +30,16 @@ describe('Multi-Hook Integration', () => {
         expect(basketResult.current.basketIdent).not.toBeNull();
       });
 
-      const basketIdent = basketResult.current.basketIdent;
-      expect(basketIdent).toMatch(/^basket-/);
+      expect(basketResult.current.basketIdent).toMatch(/^basket-/);
 
-      // Clear user
+      // Clear user - basket should be auto-cleared
       await act(async () => {
         userResult.current.clearUsername();
       });
 
       expect(userResult.current.isAuthenticated).toBe(false);
 
-      // Basket should still exist (clearing username doesn't auto-clear basket)
-      // User must explicitly clear basket
-      expect(basketResult.current.basketIdent).toBe(basketIdent);
-
-      // Manually clear basket
-      act(() => {
-        basketResult.current.clearBasket();
-      });
-
+      // Basket should be automatically cleared when username is cleared
       expect(basketResult.current.basketIdent).toBeNull();
     });
 

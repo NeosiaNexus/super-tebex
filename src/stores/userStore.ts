@@ -3,6 +3,8 @@
 import { create } from 'zustand';
 import { persist, subscribeWithSelector } from 'zustand/middleware';
 
+import { useBasketStore } from './basketStore';
+
 /**
  * User store state interface.
  */
@@ -37,6 +39,8 @@ export const useUserStore = create<UserStore>()(
         },
         clearUsername: () => {
           set({ username: null });
+          // Auto-clear basket when user logs out
+          useBasketStore.getState().clearBasketIdent();
         },
       }),
       {
