@@ -17,6 +17,7 @@ interface TebexCheckout {
   init: (options: { ident: string }) => void;
   launch: () => void;
   on: (event: string, callback: (data?: unknown) => void) => void;
+  off: (event: string, callback: (data?: unknown) => void) => void;
   close: () => void;
 }
 
@@ -76,28 +77,49 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
 
       return new Promise<void>((resolve, reject) => {
         const tebexCheckout = tebexGlobal.checkout;
+        let isSettled = false;
 
-        tebexCheckout.init({ ident: basketIdent });
-
-        tebexCheckout.on('payment:complete', () => {
+        // Define handlers so we can remove them later
+        const handleComplete = (): void => {
+          if (isSettled) return;
+          isSettled = true;
+          cleanup();
           clearBasket();
           options.onSuccess?.();
           resolve();
-        });
+        };
 
-        tebexCheckout.on('payment:error', data => {
+        const handleError = (data?: unknown): void => {
+          if (isSettled) return;
+          isSettled = true;
+          cleanup();
           const error = new TebexError(TebexErrorCode.CHECKOUT_FAILED, String(data));
           options.onError?.(error);
           config.onError?.(error);
           reject(error);
-        });
+        };
 
-        tebexCheckout.on('close', () => {
+        const handleClose = (): void => {
+          if (isSettled) return;
+          isSettled = true;
+          cleanup();
           options.onClose?.();
-          // Resolve the promise when the modal is closed
-          // If payment:complete or payment:error already resolved/rejected, this is a no-op
           resolve();
-        });
+        };
+
+        // Cleanup function to remove all event listeners
+        const cleanup = (): void => {
+          tebexCheckout.off('payment:complete', handleComplete);
+          tebexCheckout.off('payment:error', handleError);
+          tebexCheckout.off('close', handleClose);
+        };
+
+        tebexCheckout.init({ ident: basketIdent });
+
+        // Register event handlers
+        tebexCheckout.on('payment:complete', handleComplete);
+        tebexCheckout.on('payment:error', handleError);
+        tebexCheckout.on('close', handleClose);
 
         tebexCheckout.launch();
       });
