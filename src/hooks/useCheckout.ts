@@ -17,7 +17,6 @@ interface TebexCheckout {
   init: (options: { ident: string }) => void;
   launch: () => void;
   on: (event: string, callback: (data?: unknown) => void) => void;
-  off: (event: string, callback: (data?: unknown) => void) => void;
   close: () => void;
 }
 
@@ -71,7 +70,7 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
       if (tebexGlobal === undefined) {
         throw new TebexError(
           TebexErrorCode.TEBEX_JS_NOT_LOADED,
-          'Tebex.js not loaded. Add <script src="https://js.tebex.io/v/1.js"></script> to your page.',
+          'Tebex.js not loaded. Add <script src="https://js.tebex.io/v/1.9.0.js"></script> to your page.',
         );
       }
 
@@ -107,11 +106,65 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
           resolve();
         };
 
-        // Cleanup function to remove all event listeners
+        // MutationObserver to detect modal removal from DOM (fallback for close event)
+        let observer: MutationObserver | null = null;
+        let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+        // Cleanup function to disconnect observer and clear timers
+        // Note: Tebex.js doesn't support off() method, so we rely on isSettled flag
         const cleanup = (): void => {
-          tebexCheckout.off('payment:complete', handleComplete);
-          tebexCheckout.off('payment:error', handleError);
-          tebexCheckout.off('close', handleClose);
+          if (observer !== null) {
+            observer.disconnect();
+            observer = null;
+          }
+          if (debounceTimer !== null) {
+            clearTimeout(debounceTimer);
+            debounceTimer = null;
+          }
+        };
+
+        // Helper to find Tebex modal element
+        const findTebexModal = (): Element | null =>
+          document.querySelector('iframe[src*="tebex"]') ??
+          document.querySelector('[class*="tebex-js"]') ??
+          document.querySelector('tebex-checkout[open]');
+
+        // Setup MutationObserver to detect when Tebex modal is removed
+        const setupModalObserver = (): void => {
+          let modalWasOpen = false;
+
+          // Debounced check to avoid excessive DOM queries
+          const checkModal = (): void => {
+            if (isSettled) return;
+
+            const modal = findTebexModal();
+
+            if (modal !== null) {
+              modalWasOpen = true;
+            } else if (modalWasOpen) {
+              handleClose();
+            }
+          };
+
+          observer = new MutationObserver(() => {
+            if (isSettled) return;
+
+            // Debounce: wait 50ms after last mutation before checking
+            if (debounceTimer !== null) {
+              clearTimeout(debounceTimer);
+            }
+            debounceTimer = setTimeout(checkModal, 50);
+          });
+
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+          });
+
+          // Check if modal is already open
+          if (findTebexModal() !== null) {
+            modalWasOpen = true;
+          }
         };
 
         tebexCheckout.init({ ident: basketIdent });
@@ -122,6 +175,9 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
         tebexCheckout.on('close', handleClose);
 
         tebexCheckout.launch();
+
+        // Setup observer after launch to detect modal closure as fallback
+        setupModalObserver();
       });
     },
   });

@@ -25,11 +25,6 @@ function createMockTebexCheckout() {
         }
         eventHandlers[event].push(callback);
       }),
-      off: vi.fn((event: string, callback: (data?: unknown) => void) => {
-        if (eventHandlers[event]) {
-          eventHandlers[event] = eventHandlers[event].filter(h => h !== callback);
-        }
-      }),
     },
     // Helper to trigger events in tests
     triggerEvent: (event: string, data?: unknown) => {
