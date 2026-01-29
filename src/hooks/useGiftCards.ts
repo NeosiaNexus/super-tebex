@@ -2,6 +2,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useMemo } from 'react';
+import type { Basket } from 'tebex_headless';
 
 import { TebexError } from '../errors/TebexError';
 import { TebexErrorCode } from '../errors/codes';
@@ -13,7 +14,7 @@ import type { UseGiftCardsReturn } from '../types/hooks';
 import { useBasket } from './useBasket';
 
 /**
- * Hook to manage gift cards on the basket.
+ * Hook to manage gift cards on the basket with optimistic updates.
  *
  * @returns Gift card state and actions
  *
@@ -38,38 +39,72 @@ export function useGiftCards(): UseGiftCardsReturn {
   const config = useTebexConfig();
 
   const applyMutation = useMutation({
-    mutationFn: async (cardNumber: string): Promise<void> => {
+    mutationFn: async (cardNumber: string): Promise<Basket> => {
       if (basketIdent === null) {
         throw new TebexError(TebexErrorCode.BASKET_NOT_FOUND);
       }
       const tebex = getTebexClient();
       await tebex.apply(basketIdent, 'giftcards', { card_number: cardNumber });
+      return tebex.getBasket(basketIdent);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: tebexKeys.basket(basketIdent),
-      });
+    onMutate: async cardNumber => {
+      await queryClient.cancelQueries({ queryKey: tebexKeys.basket(basketIdent) });
+
+      const previousBasket = queryClient.getQueryData<Basket | null>(tebexKeys.basket(basketIdent));
+
+      // Optimistically add the gift card
+      if (previousBasket !== null && previousBasket !== undefined) {
+        queryClient.setQueryData<Basket>(tebexKeys.basket(basketIdent), {
+          ...previousBasket,
+          giftcards: [...previousBasket.giftcards, { card_number: cardNumber }],
+        });
+      }
+
+      return { previousBasket };
     },
-    onError: error => {
-      config.onError?.(TebexError.fromUnknown(error));
+    onError: (_error, _cardNumber, context) => {
+      if (context?.previousBasket !== undefined) {
+        queryClient.setQueryData(tebexKeys.basket(basketIdent), context.previousBasket);
+      }
+      config.onError?.(TebexError.fromUnknown(_error));
+    },
+    onSuccess: data => {
+      queryClient.setQueryData(tebexKeys.basket(basketIdent), data);
     },
   });
 
   const removeMutation = useMutation({
-    mutationFn: async (cardNumber: string): Promise<void> => {
+    mutationFn: async (cardNumber: string): Promise<Basket> => {
       if (basketIdent === null) {
         throw new TebexError(TebexErrorCode.BASKET_NOT_FOUND);
       }
       const tebex = getTebexClient();
       await tebex.remove(basketIdent, 'giftcards', { card_number: cardNumber });
+      return tebex.getBasket(basketIdent);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: tebexKeys.basket(basketIdent),
-      });
+    onMutate: async cardNumber => {
+      await queryClient.cancelQueries({ queryKey: tebexKeys.basket(basketIdent) });
+
+      const previousBasket = queryClient.getQueryData<Basket | null>(tebexKeys.basket(basketIdent));
+
+      // Optimistically remove the gift card
+      if (previousBasket !== null && previousBasket !== undefined) {
+        queryClient.setQueryData<Basket>(tebexKeys.basket(basketIdent), {
+          ...previousBasket,
+          giftcards: previousBasket.giftcards.filter(g => g.card_number !== cardNumber),
+        });
+      }
+
+      return { previousBasket };
     },
-    onError: error => {
-      config.onError?.(TebexError.fromUnknown(error));
+    onError: (_error, _cardNumber, context) => {
+      if (context?.previousBasket !== undefined) {
+        queryClient.setQueryData(tebexKeys.basket(basketIdent), context.previousBasket);
+      }
+      config.onError?.(TebexError.fromUnknown(_error));
+    },
+    onSuccess: data => {
+      queryClient.setQueryData(tebexKeys.basket(basketIdent), data);
     },
   });
 
