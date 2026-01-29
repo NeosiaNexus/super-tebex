@@ -11,6 +11,7 @@ import { tebexKeys } from '../queries/keys';
 import { getTebexClient } from '../services/api';
 import { useBasketStore } from '../stores/basketStore';
 import { useUserStore } from '../stores/userStore';
+import { isPositiveInteger } from '../types/guards';
 import type { AddPackageParams, UpdateQuantityParams, UseBasketReturn } from '../types/hooks';
 
 /**
@@ -110,13 +111,23 @@ export function useBasket(): UseBasketReturn {
   // Mutation: Add package with optimistic update
   const addMutation = useMutation({
     mutationFn: async (params: AddPackageParams): Promise<Basket> => {
+      const quantity = params.quantity ?? 1;
+
+      // Validate quantity is a positive integer
+      if (!isPositiveInteger(quantity)) {
+        throw new TebexError(
+          TebexErrorCode.INVALID_QUANTITY,
+          'Quantity must be a positive integer',
+        );
+      }
+
       const ident = await ensureBasket();
       const tebex = getTebexClient();
 
       await tebex.addPackageToBasket(
         ident,
         params.packageId,
-        params.quantity ?? 1,
+        quantity,
         params.type,
         params.variableData,
       );
@@ -222,6 +233,14 @@ export function useBasket(): UseBasketReturn {
   // Mutation: Update quantity with optimistic update
   const updateQuantityMutation = useMutation({
     mutationFn: async (params: UpdateQuantityParams): Promise<Basket> => {
+      // Validate quantity is a positive integer
+      if (!isPositiveInteger(params.quantity)) {
+        throw new TebexError(
+          TebexErrorCode.INVALID_QUANTITY,
+          'Quantity must be a positive integer',
+        );
+      }
+
       if (basketIdent === null) {
         throw new TebexError(TebexErrorCode.BASKET_NOT_FOUND);
       }

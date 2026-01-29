@@ -46,3 +46,20 @@ export function isNonEmptyString(value: unknown): value is string {
 export function isPositiveNumber(value: unknown): value is number {
   return typeof value === 'number' && value > 0 && Number.isFinite(value);
 }
+
+/**
+ * Type guard to check if a value is a positive integer.
+ */
+export function isPositiveInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value > 0;
+}
+
+/**
+ * Validates a Minecraft username format.
+ * Valid usernames are 3-16 characters, alphanumeric with underscores.
+ */
+export function isValidMinecraftUsername(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  // Minecraft usernames: 3-16 chars, alphanumeric + underscore
+  return /^[a-zA-Z0-9_]{3,16}$/.test(value);
+}

@@ -191,7 +191,8 @@ export interface UseWebstoreReturn extends BaseQueryReturn<WebstoreData> {
 
 export interface UseUserReturn {
   readonly username: string | null;
-  readonly setUsername: (username: string) => void;
+  /** Sets the username. Returns true if valid, false if invalid (not 3-16 chars alphanumeric). */
+  readonly setUsername: (username: string) => boolean;
   readonly clearUsername: () => void;
   readonly isAuthenticated: boolean;
 }

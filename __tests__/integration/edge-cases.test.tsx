@@ -451,14 +451,12 @@ describe('Edge Cases', () => {
         expect(basketResult.current.packages).toHaveLength(1);
       });
 
-      // Update to zero quantity (edge case)
-      await act(async () => {
-        await basketResult.current.updateQuantity({ packageId: 101, quantity: 0 });
-      });
-
-      await waitFor(() => {
-        expect(basketResult.current.packages[0].in_basket.quantity).toBe(0);
-      });
+      // Update to zero quantity should throw INVALID_QUANTITY error
+      await expect(
+        act(async () => {
+          await basketResult.current.updateQuantity({ packageId: 101, quantity: 0 });
+        }),
+      ).rejects.toThrow('Quantity must be a positive integer');
     });
 
     it('should handle very large quantity values', async () => {

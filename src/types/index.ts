@@ -50,9 +50,11 @@ export {
   isDefined,
   isError,
   isNonEmptyString,
+  isPositiveInteger,
   isPositiveNumber,
   isSuccess,
   isTebexError,
+  isValidMinecraftUsername,
 } from './guards';
 
 // Re-export tebex_headless types

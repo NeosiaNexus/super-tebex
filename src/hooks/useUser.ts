@@ -3,6 +3,7 @@
 import { useCallback } from 'react';
 
 import { useUserStore } from '../stores/userStore';
+import { isValidMinecraftUsername } from '../types/guards';
 import type { UseUserReturn } from '../types/hooks';
 
 /**
@@ -13,7 +14,7 @@ import type { UseUserReturn } from '../types/hooks';
  *
  * @example
  * ```tsx
- * const { username, setUsername, isAuthenticated } = useUser();
+ * const { username, setUsername, isAuthenticated, isValidUsername } = useUser();
  *
  * if (!isAuthenticated) {
  *   return <UsernameForm onSubmit={setUsername} />;
@@ -28,11 +29,13 @@ export function useUser(): UseUserReturn {
   const clearUsernameStore = useUserStore(state => state.clearUsername);
 
   const setUsername = useCallback(
-    (newUsername: string) => {
+    (newUsername: string): boolean => {
       const trimmed = newUsername.trim();
-      if (trimmed.length > 0) {
+      if (isValidMinecraftUsername(trimmed)) {
         setUsernameStore(trimmed);
+        return true;
       }
+      return false;
     },
     [setUsernameStore],
   );
