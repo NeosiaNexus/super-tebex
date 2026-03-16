@@ -6,9 +6,11 @@ import {
   isDefined,
   isError,
   isNonEmptyString,
+  isPositiveInteger,
   isPositiveNumber,
   isSuccess,
   isTebexError,
+  isValidMinecraftUsername,
 } from '../../src/types/guards';
 import { err, ok } from '../../src/types/result';
 
@@ -49,6 +51,16 @@ describe('Type Guards', () => {
     it('should return false for numbers', () => {
       expect(isTebexError(42)).toBe(false);
     });
+
+    it('should detect TebexError-like objects via duck typing', () => {
+      const errorLike = { name: 'TebexError', code: TebexErrorCode.UNKNOWN, message: 'test' };
+      expect(isTebexError(errorLike)).toBe(true);
+    });
+
+    it('should reject non-TebexError objects', () => {
+      expect(isTebexError({ name: 'Error', message: 'test' })).toBe(false);
+      expect(isTebexError(null)).toBe(false);
+    });
   });
 
   describe('isSuccess', () => {
@@ -58,7 +70,7 @@ describe('Type Guards', () => {
     });
 
     it('should return false for error result', () => {
-      const result = err(new TebexError(TebexErrorCode.UNKNOWN_ERROR));
+      const result = err(new TebexError(TebexErrorCode.UNKNOWN));
       expect(isSuccess(result)).toBe(false);
     });
 
@@ -217,6 +229,46 @@ describe('Type Guards', () => {
         // TypeScript should know maybeNumber is number here
         expect(maybeNumber * 2).toBe(10);
       }
+    });
+  });
+
+  describe('isPositiveInteger', () => {
+    it('should return true for positive integers', () => {
+      expect(isPositiveInteger(1)).toBe(true);
+      expect(isPositiveInteger(100)).toBe(true);
+    });
+    it('should return false for zero', () => {
+      expect(isPositiveInteger(0)).toBe(false);
+    });
+    it('should return false for negative numbers', () => {
+      expect(isPositiveInteger(-1)).toBe(false);
+    });
+    it('should return false for floats', () => {
+      expect(isPositiveInteger(1.5)).toBe(false);
+    });
+    it('should return false for non-numbers', () => {
+      expect(isPositiveInteger('1' as unknown as number)).toBe(false);
+      expect(isPositiveInteger(null as unknown as number)).toBe(false);
+    });
+  });
+
+  describe('isValidMinecraftUsername', () => {
+    it('should accept valid usernames', () => {
+      expect(isValidMinecraftUsername('Steve')).toBe(true);
+      expect(isValidMinecraftUsername('Player_123')).toBe(true);
+      expect(isValidMinecraftUsername('abc')).toBe(true);
+      expect(isValidMinecraftUsername('a'.repeat(16))).toBe(true);
+    });
+    it('should reject too short usernames', () => {
+      expect(isValidMinecraftUsername('ab')).toBe(false);
+      expect(isValidMinecraftUsername('')).toBe(false);
+    });
+    it('should reject too long usernames', () => {
+      expect(isValidMinecraftUsername('a'.repeat(17))).toBe(false);
+    });
+    it('should reject special characters', () => {
+      expect(isValidMinecraftUsername('Player!')).toBe(false);
+      expect(isValidMinecraftUsername('Play er')).toBe(false);
     });
   });
 });

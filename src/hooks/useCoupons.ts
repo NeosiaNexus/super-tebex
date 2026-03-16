@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import type { Basket } from 'tebex_headless';
 
 import { TebexError } from '../errors/TebexError';
@@ -35,82 +35,86 @@ import { useBasket } from './useBasket';
 export function useCoupons(): UseCouponsReturn {
   const { basket } = useBasket();
   const basketIdent = useBasketStore(state => state.basketIdent);
+  const basketIdentRef = useRef(basketIdent);
+  basketIdentRef.current = basketIdent;
   const queryClient = useQueryClient();
   const config = useTebexConfig();
 
   const applyMutation = useMutation({
+    scope: { id: 'basket-mutations' },
     mutationFn: async (couponCode: string): Promise<Basket> => {
-      if (basketIdent === null) {
+      const ident = basketIdentRef.current;
+      if (ident === null) {
         throw new TebexError(TebexErrorCode.BASKET_NOT_FOUND);
       }
       const tebex = getTebexClient();
-      await tebex.apply(basketIdent, 'coupons', { coupon_code: couponCode });
-      // Return updated basket for cache sync
-      return tebex.getBasket(basketIdent);
+      await tebex.apply(ident, 'coupons', { coupon_code: couponCode });
+      return tebex.getBasket(ident);
     },
     onMutate: async couponCode => {
-      // Cancel outgoing refetches to avoid overwriting optimistic update
-      await queryClient.cancelQueries({ queryKey: tebexKeys.basket(basketIdent) });
-
-      // Snapshot previous value for rollback
-      const previousBasket = queryClient.getQueryData<Basket | null>(tebexKeys.basket(basketIdent));
-
-      // Optimistically add the coupon
-      if (previousBasket !== null && previousBasket !== undefined) {
-        queryClient.setQueryData<Basket>(tebexKeys.basket(basketIdent), {
+      const ident = basketIdentRef.current;
+      if (ident === null) return;
+      await queryClient.cancelQueries({ queryKey: tebexKeys.basket(ident) });
+      const previousBasket = queryClient.getQueryData<Basket>(tebexKeys.basket(ident));
+      if (previousBasket !== undefined) {
+        queryClient.setQueryData<Basket>(tebexKeys.basket(ident), {
           ...previousBasket,
           coupons: [...previousBasket.coupons, { code: couponCode }],
         });
       }
 
-      return { previousBasket };
+      return { previousBasket, ident };
     },
     onError: (_error, _couponCode, context) => {
-      // Rollback on error
       if (context?.previousBasket !== undefined) {
-        queryClient.setQueryData(tebexKeys.basket(basketIdent), context.previousBasket);
+        queryClient.setQueryData(tebexKeys.basket(context.ident), context.previousBasket);
       }
       config.onError?.(TebexError.fromUnknown(_error));
     },
-    onSuccess: data => {
-      // Sync with server response (includes recalculated prices)
-      queryClient.setQueryData(tebexKeys.basket(basketIdent), data);
+    onSuccess: (data, _couponCode, context) => {
+      const ident = context?.ident ?? basketIdentRef.current;
+      if (ident !== null) {
+        queryClient.setQueryData(tebexKeys.basket(ident), data);
+      }
     },
   });
 
   const removeMutation = useMutation({
+    scope: { id: 'basket-mutations' },
     mutationFn: async (couponCode: string): Promise<Basket> => {
-      if (basketIdent === null) {
+      const ident = basketIdentRef.current;
+      if (ident === null) {
         throw new TebexError(TebexErrorCode.BASKET_NOT_FOUND);
       }
       const tebex = getTebexClient();
-      await tebex.remove(basketIdent, 'coupons', { coupon_code: couponCode });
-      // Return updated basket for cache sync
-      return tebex.getBasket(basketIdent);
+      await tebex.remove(ident, 'coupons', { coupon_code: couponCode });
+      return tebex.getBasket(ident);
     },
     onMutate: async couponCode => {
-      await queryClient.cancelQueries({ queryKey: tebexKeys.basket(basketIdent) });
-
-      const previousBasket = queryClient.getQueryData<Basket | null>(tebexKeys.basket(basketIdent));
-
-      // Optimistically remove the coupon
-      if (previousBasket !== null && previousBasket !== undefined) {
-        queryClient.setQueryData<Basket>(tebexKeys.basket(basketIdent), {
+      const ident = basketIdentRef.current;
+      if (ident === null) return;
+      await queryClient.cancelQueries({ queryKey: tebexKeys.basket(ident) });
+      const previousBasket = queryClient.getQueryData<Basket>(tebexKeys.basket(ident));
+      if (previousBasket !== undefined) {
+        queryClient.setQueryData<Basket>(tebexKeys.basket(ident), {
           ...previousBasket,
           coupons: previousBasket.coupons.filter(c => c.code !== couponCode),
         });
       }
 
-      return { previousBasket };
+      return { previousBasket, ident };
     },
     onError: (_error, _couponCode, context) => {
       if (context?.previousBasket !== undefined) {
-        queryClient.setQueryData(tebexKeys.basket(basketIdent), context.previousBasket);
+        queryClient.setQueryData(tebexKeys.basket(context.ident), context.previousBasket);
       }
       config.onError?.(TebexError.fromUnknown(_error));
     },
-    onSuccess: data => {
-      queryClient.setQueryData(tebexKeys.basket(basketIdent), data);
+    onSuccess: (data, _couponCode, context) => {
+      const ident = context?.ident ?? basketIdentRef.current;
+      if (ident !== null) {
+        queryClient.setQueryData(tebexKeys.basket(ident), data);
+      }
     },
   });
 

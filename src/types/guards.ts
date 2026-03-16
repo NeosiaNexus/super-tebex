@@ -5,7 +5,14 @@ import type { Result } from './result';
  * Type guard to check if an error is a TebexError.
  */
 export function isTebexError(error: unknown): error is TebexError {
-  return error instanceof TebexError;
+  if (error instanceof TebexError) return true;
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    'code' in error &&
+    (error as { name: unknown }).name === 'TebexError'
+  );
 }
 
 /**
@@ -60,6 +67,5 @@ export function isPositiveInteger(value: unknown): value is number {
  */
 export function isValidMinecraftUsername(value: unknown): value is string {
   if (typeof value !== 'string') return false;
-  // Minecraft usernames: 3-16 chars, alphanumeric + underscore
   return /^[a-zA-Z0-9_]{3,16}$/.test(value);
 }

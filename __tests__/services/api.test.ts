@@ -26,7 +26,7 @@ describe('api service', () => {
   describe('getTebexClient', () => {
     it('should throw when not initialized', () => {
       expect(() => getTebexClient()).toThrow(
-        'Tebex client not initialized. Make sure you are using TebexProvider.',
+        'Tebex client not initialized. Ensure TebexProvider wraps your component tree.',
       );
     });
 

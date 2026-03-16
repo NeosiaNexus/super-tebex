@@ -137,4 +137,56 @@ describe('TebexError', () => {
       });
     });
   });
+
+  describe('fromUnknown HTTP status detection', () => {
+    it('should detect 429 as RATE_LIMITED', () => {
+      const error = { message: 'Too many requests', response: { status: 429 } };
+      expect(TebexError.fromUnknown(error).code).toBe(TebexErrorCode.RATE_LIMITED);
+    });
+    it('should detect 404 with basket context as BASKET_NOT_FOUND', () => {
+      const error = Object.assign(new Error('Basket not found'), { response: { status: 404 } });
+      expect(TebexError.fromUnknown(error).code).toBe(TebexErrorCode.BASKET_NOT_FOUND);
+    });
+    it('should detect 410 as BASKET_EXPIRED', () => {
+      const error = { message: 'Gone', response: { status: 410 } };
+      expect(TebexError.fromUnknown(error).code).toBe(TebexErrorCode.BASKET_EXPIRED);
+    });
+    it('should detect 500 as SERVER_ERROR', () => {
+      const error = { message: 'Internal error', response: { status: 500 } };
+      expect(TebexError.fromUnknown(error).code).toBe(TebexErrorCode.SERVER_ERROR);
+    });
+    it('should detect 403 as FORBIDDEN', () => {
+      const error = { message: 'Forbidden', response: { status: 403 } };
+      expect(TebexError.fromUnknown(error).code).toBe(TebexErrorCode.FORBIDDEN);
+    });
+  });
+
+  describe('toJSON with cause', () => {
+    it('should include cause message when cause is an Error', () => {
+      const cause = new Error('root cause');
+      const error = new TebexError(TebexErrorCode.NETWORK_ERROR, 'Failed', cause);
+      const json = error.toJSON();
+      expect(json.cause).toBe('root cause');
+    });
+    it('should omit cause when not an Error', () => {
+      const error = new TebexError(TebexErrorCode.UNKNOWN, 'test');
+      const json = error.toJSON();
+      expect(json.cause).toBeUndefined();
+    });
+  });
+
+  describe('fromJSON', () => {
+    it('should create TebexError from JSON', () => {
+      const error = TebexError.fromJSON({ code: TebexErrorCode.RATE_LIMITED, message: 'Slow down' });
+      expect(error).toBeInstanceOf(TebexError);
+      expect(error.code).toBe(TebexErrorCode.RATE_LIMITED);
+      expect(error.message).toBe('Slow down');
+    });
+    it('should roundtrip through JSON', () => {
+      const original = new TebexError(TebexErrorCode.BASKET_NOT_FOUND, 'Gone');
+      const restored = TebexError.fromJSON(original.toJSON());
+      expect(restored.code).toBe(original.code);
+      expect(restored.message).toBe(original.message);
+    });
+  });
 });

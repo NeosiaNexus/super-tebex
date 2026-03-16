@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/@neosianexus/super-tebex?color=blue)](https://www.npmjs.com/package/@neosianexus/super-tebex)
 [![npm downloads](https://img.shields.io/npm/dm/@neosianexus/super-tebex)](https://www.npmjs.com/package/@neosianexus/super-tebex)
 [![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen)](https://github.com/NeosiaNexus/super-tebex)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 > Tebex Headless SDK optimized for Next.js App Router with TanStack Query and Zustand.
@@ -278,7 +278,7 @@ const {
 });
 
 // IMPORTANT: Requires Tebex.js script in your page
-// <script src="https://js.tebex.io/v/1.1.js" async />
+// <script src="https://js.tebex.io/v/1.9.0.js" async />
 ```
 
 #### useUser
@@ -286,7 +286,7 @@ const {
 ```typescript
 const {
   username,        // string | null
-  setUsername,     // (username: string) => void
+  setUsername,     // (username: string) => boolean
   clearUsername,   // () => void
   isAuthenticated, // boolean
 } = useUser();
@@ -405,6 +405,7 @@ if (errorCode) {
 | **Creator Code** | `CREATOR_CODE_INVALID` |
 | **Checkout** | `CHECKOUT_FAILED`, `CHECKOUT_CANCELLED`, `TEBEX_JS_NOT_LOADED` |
 | **Network** | `NETWORK_ERROR`, `TIMEOUT`, `RATE_LIMITED` |
+| **HTTP** | `SERVER_ERROR`, `FORBIDDEN`, `VALIDATION_ERROR`, `NOT_FOUND`, `BASKET_LOCKED`, `PACKAGE_DISABLED` |
 | **Unknown** | `UNKNOWN` |
 
 ---
@@ -467,11 +468,18 @@ import { TebexError, TebexErrorCode } from '@neosianexus/super-tebex';
 
 // Type guards
 import {
-  isTebexError,  // (error: unknown) => error is TebexError
-  isSuccess,     // (result: Result<T,E>) => result is { ok: true, data: T }
-  isError,       // (result: Result<T,E>) => result is { ok: false, error: E }
-  isDefined,     // <T>(value: T | null | undefined) => value is T
+  isTebexError,            // (error: unknown) => error is TebexError (duck-typing, cross-realm safe)
+  isSuccess,               // (result: Result<T,E>) => result is { success: true, data: T }
+  isError,                 // (result: Result<T,E>) => result is { success: false, error: E }
+  isDefined,               // <T>(value: T | null | undefined) => value is T
+  isNonEmptyString,        // (value: unknown) => value is string
+  isPositiveInteger,       // (value: unknown) => value is number
+  isPositiveNumber,        // (value: unknown) => value is number
+  isValidMinecraftUsername, // (value: unknown) => value is string (3-16 chars, alphanumeric + underscore)
 } from '@neosianexus/super-tebex';
+
+// Query key type
+import type { TebexQueryKey } from '@neosianexus/super-tebex';
 
 // Result utilities
 import { ok, err } from '@neosianexus/super-tebex';
@@ -803,7 +811,7 @@ if (errorCode === TebexErrorCode.BASKET_NOT_FOUND) {
 
 ### Requirements
 - Must wrap app with `TebexProvider`
-- Checkout requires `<script src="https://js.tebex.io/v/1.1.js" async />`
+- Checkout requires `<script src="https://js.tebex.io/v/1.9.0.js" async />`
 - Username required before adding to basket
 
 </details>

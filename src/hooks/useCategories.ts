@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import type { Category } from 'tebex_headless';
 
 import { TebexError } from '../errors/TebexError';
@@ -34,6 +34,7 @@ export function useCategories(options: UseCategoriesOptions = {}): UseCategories
       return tebex.getCategories(includePackages);
     },
     enabled,
+    staleTime: 5 * 60 * 1000,
   });
 
   const error = useMemo(
@@ -41,20 +42,23 @@ export function useCategories(options: UseCategoriesOptions = {}): UseCategories
     [query.error],
   );
 
-  const getByName = useMemo(
-    () => (name: string) =>
-      query.data?.find(category => category.name.toLowerCase() === name.toLowerCase()),
-    [query.data],
+  const dataRef = useRef(query.data);
+  dataRef.current = query.data;
+
+  const getByName = useCallback(
+    (name: string) =>
+      dataRef.current?.find(category => category.name.toLowerCase() === name.toLowerCase()),
+    [],
   );
 
-  const getById = useMemo(
-    () => (id: number) => query.data?.find(category => category.id === id),
-    [query.data],
+  const getById = useCallback(
+    (id: number) => dataRef.current?.find(category => category.id === id),
+    [],
   );
 
-  const getBySlug = useMemo(
-    () => (slug: string) => query.data?.find(category => category.slug === slug),
-    [query.data],
+  const getBySlug = useCallback(
+    (slug: string) => dataRef.current?.find(category => category.slug === slug),
+    [],
   );
 
   return {

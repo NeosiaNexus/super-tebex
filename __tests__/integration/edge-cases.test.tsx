@@ -110,7 +110,7 @@ describe('Edge Cases', () => {
     it('should handle network error for package detail', async () => {
       server.use(createNetworkErrorHandler('get', `${ACCOUNTS_URL}/packages/:id`));
 
-      const { result } = renderHook(() => usePackage(101), {
+      const { result } = renderHook(() => usePackage({ id: 101 }), {
         wrapper: createWrapper(),
       });
 
@@ -483,33 +483,8 @@ describe('Edge Cases', () => {
     });
 
     it('should handle package ID as zero', async () => {
-      // Mock a package with ID 0 using the correct route pattern
-      server.use(
-        http.get(`${ACCOUNTS_URL}/packages/:id`, ({ params }) => {
-          const id = Number(params.id);
-          if (id === 0) {
-            return HttpResponse.json({
-              data: {
-                id: 0,
-                name: 'Free Item',
-                description: 'Free item',
-                type: 'single',
-                base_price: 0,
-                sales_price: 0,
-                total_price: 0,
-                currency: 'EUR',
-                image: null,
-                category: { id: 1, name: 'VIP' },
-                discount: 0,
-                gift_username_required: false,
-              },
-            });
-          }
-          return HttpResponse.json({ error: 'Package not found' }, { status: 404 });
-        }),
-      );
-
-      // usePackage takes an options object, not a number directly
+      // usePackage validates that id must be a positive integer (id > 0),
+      // so id: 0 disables the query and returns null package
       const { result } = renderHook(() => usePackage({ id: 0 }), {
         wrapper: createWrapper(),
       });
@@ -518,8 +493,8 @@ describe('Edge Cases', () => {
         expect(result.current.isLoading).toBe(false);
       });
 
-      // The hook should handle package ID 0
-      expect(result.current.package?.id).toBe(0);
+      // id: 0 is not valid, so the query is disabled
+      expect(result.current.package).toBeNull();
       expect(result.current.error).toBeNull();
     });
   });

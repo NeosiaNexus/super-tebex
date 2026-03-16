@@ -34,7 +34,8 @@ export function usePackage(options: UsePackageOptions): UsePackageReturn {
       const tebex = getTebexClient();
       return tebex.getPackage(id);
     },
-    enabled,
+    enabled: enabled && id > 0 && Number.isInteger(id),
+    staleTime: 5 * 60 * 1000,
   });
 
   const error = useMemo(

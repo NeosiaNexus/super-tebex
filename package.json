@@ -10,12 +10,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "require": "./dist/index.cjs",
+      "default": "./dist/index.js"
     },
     "./testing": {
       "types": "./dist/testing/index.d.ts",
       "import": "./dist/testing/index.js",
-      "require": "./dist/testing/index.cjs"
+      "require": "./dist/testing/index.cjs",
+      "default": "./dist/testing/index.js"
     }
   },
   "files": [
@@ -27,7 +29,7 @@
     "provenance": true
   },
   "scripts": {
-    "build": "NODE_ENV=production bun run build.ts",
+    "build": "tsup",
     "dev": "bun run build.ts --watch",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --fix",
@@ -81,6 +83,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tebex_headless": "^1.15.1",
+    "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "vitest": "^4.1.0",
     "zustand": "^5.0.12"

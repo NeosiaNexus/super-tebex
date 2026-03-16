@@ -1,9 +1,11 @@
 'use client';
 
 import { QueryClient, QueryClientProvider, type QueryClientConfig } from '@tanstack/react-query';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { initTebexClient } from '../services/api';
+import { useBasketStore } from '../stores/basketStore';
+import { useUserStore } from '../stores/userStore';
 import type { ResolvedTebexConfig, TebexConfig } from '../types/config';
 import { TebexContext, type TebexContextValue } from './context';
 
@@ -98,18 +100,31 @@ export function TebexProvider({
 }: TebexProviderProps): ReactNode {
   const resolvedConfig = useMemo(() => resolveConfig(config), [config]);
 
-  // Create or use external QueryClient
   const [queryClient] = useState(
     () => externalQueryClient ?? new QueryClient(defaultQueryClientConfig),
   );
 
-  // Initialize Tebex client synchronously on first render
-  // Using useState initializer to ensure it only runs once
+  // Runs once on first render via useState initializer
   useState(() => {
     initTebexClient(resolvedConfig.publicKey);
   });
 
-  // Memoize context value
+  useEffect(() => {
+    void useBasketStore.persist.rehydrate();
+    void useUserStore.persist.rehydrate();
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: StorageEvent): void => {
+      if (e.key === 'tebex-basket-store' || e.key === 'tebex-user-store') {
+        void useBasketStore.persist.rehydrate();
+        void useUserStore.persist.rehydrate();
+      }
+    };
+    window.addEventListener('storage', handler);
+    return () => { window.removeEventListener('storage', handler); };
+  }, []);
+
   const contextValue = useMemo<TebexContextValue>(
     () => ({
       config: resolvedConfig,
@@ -125,5 +140,4 @@ export function TebexProvider({
   );
 }
 
-// Re-export context hooks for backwards compatibility
 export { useTebexConfig, useTebexContext } from './context';

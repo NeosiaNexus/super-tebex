@@ -34,7 +34,8 @@ export function useCategory(options: UseCategoryOptions): UseCategoryReturn {
       const tebex = getTebexClient();
       return tebex.getCategory(id);
     },
-    enabled,
+    enabled: enabled && id > 0 && Number.isInteger(id),
+    staleTime: 5 * 60 * 1000,
   });
 
   const error = useMemo(

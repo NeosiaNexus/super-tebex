@@ -4,7 +4,7 @@ Tebex Headless SDK for Next.js App Router with TanStack Query and Zustand.
 
 ## Tech Stack
 
-- **Runtime**: Bun (package manager + build)
+- **Runtime**: Bun (package manager) + tsup (build)
 - **Framework**: React 18/19 + Next.js 14/15 App Router
 - **State**: TanStack Query v5 (server state) + Zustand v5 (client state)
 - **TypeScript**: Strict mode, zero `any` tolerance
@@ -74,11 +74,24 @@ interface UseXxxReturn {
 
 - Query hooks use `tebexKeys` factory for cache keys
 - Mutations invalidate relevant queries via `queryClient.invalidateQueries()`
+- All basket mutations use `scope: { id: 'basket-mutations' }` for serial execution
+- Hooks use `useRef` for `basketIdent` to prevent stale closures in mutation callbacks
+- Catalog queries (categories, packages, webstore) have 5-min `staleTime`
+- `useCategory`/`usePackage` validate ID > 0 before enabling the query
+- `useCheckout` has a 30-min timeout and generation counter for stale handler detection
 - Errors are wrapped in `TebexError.fromUnknown()`
 
 ## Error Handling
 
-Use `TebexErrorCode` enum - never hardcode error messages:
+Use `TebexErrorCode` enum - never hardcode error messages.
+
+Error codes are grouped: Provider, Auth, Basket, Package, Category, Coupon/GiftCard, Checkout, Network, HTTP (`SERVER_ERROR`, `FORBIDDEN`, `VALIDATION_ERROR`, `NOT_FOUND`, `BASKET_LOCKED`, `PACKAGE_DISABLED`), Unknown.
+
+`TebexError` features:
+- `fromUnknown()` — detects HTTP status codes (403, 404, 422, 5xx) and maps to error codes
+- `fromJSON()` — reconstruct from serialized `{ code, message }` object
+- `toJSON()` — serializes with `name`, `code`, `message`, and optional `cause`
+- `isTebexError()` — duck-typing guard for cross-realm/serialized support
 
 ```typescript
 // GOOD
@@ -128,11 +141,14 @@ chore: update dependencies
 ## Architecture Notes
 
 - Provider pattern: All hooks require `TebexProvider` ancestor
-- Zustand stores are persisted (localStorage) for basket/user
+- Zustand stores use `skipHydration: true` with manual rehydration in Provider
+- Persist versioning (`version: 1`) for future migrations
+- Multi-tab sync via `StorageEvent` listener in Provider
 - QueryClient is created once per TebexProvider instance
 - DevTools NOT included (consumers add their own to avoid jsxDEV production errors)
 - Hooks expose `errorCode` for i18n-friendly error handling
-- Build uses `NODE_ENV=production` to force production JSX runtime
+- Build uses `tsup` (ESM + CJS) with `tsc --emitDeclarationOnly` for types
+- Barrel exports include: `isPositiveInteger`, `isPositiveNumber`, `isNonEmptyString`, `isValidMinecraftUsername`, `TebexQueryKey`
 
 ## Before Committing
 

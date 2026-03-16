@@ -1,6 +1,8 @@
 'use client';
 
 import { TebexHeadless } from 'tebex_headless';
+import { TebexError } from '../errors/TebexError';
+import { TebexErrorCode } from '../errors/codes';
 
 let tebexInstance: TebexHeadless | null = null;
 
@@ -18,7 +20,7 @@ export function initTebexClient(publicKey: string): void {
  */
 export function getTebexClient(): TebexHeadless {
   if (tebexInstance === null) {
-    throw new Error('Tebex client not initialized. Make sure you are using TebexProvider.');
+    throw new TebexError(TebexErrorCode.PROVIDER_NOT_FOUND, 'Tebex client not initialized. Ensure TebexProvider wraps your component tree.');
   }
   return tebexInstance;
 }

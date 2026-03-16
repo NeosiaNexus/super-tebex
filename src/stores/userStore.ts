@@ -39,18 +39,29 @@ export const useUserStore = create<UserStore>()(
         },
         clearUsername: () => {
           set({ username: null });
-          // Auto-clear basket when user logs out
           useBasketStore.getState().clearBasketIdent();
         },
       }),
       {
         name: 'tebex-user-store',
-        // Skip hydration on server to avoid hydration mismatch
-        skipHydration: typeof window === 'undefined',
+        // Skip hydration — rehydrated manually in TebexProvider
+        skipHydration: true,
+        version: 1,
+        partialize: (state: UserStore) => ({ username: state.username }),
+        migrate: (persistedState: unknown) => {
+          return persistedState as Pick<UserStoreState, 'username'>;
+        },
+        onRehydrateStorage: () => {
+          return (_state: unknown, error?: unknown) => {
+            if (error !== undefined) {
+              // eslint-disable-next-line no-console
+              console.warn('[tebex] Failed to rehydrate user store:', error);
+            }
+          };
+        },
       },
     ),
   ),
 );
 
-// Re-export types for consumers
 export type { UserStore, UserStoreActions, UserStoreState };

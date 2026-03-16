@@ -134,7 +134,7 @@ describe('Result utilities', () => {
 
     it('should work with all TebexErrorCode values', () => {
       const errorCodes: TebexErrorCode[] = [
-        TebexErrorCode.UNKNOWN_ERROR,
+        TebexErrorCode.UNKNOWN,
         TebexErrorCode.NETWORK_ERROR,
         TebexErrorCode.INVALID_CONFIG,
         TebexErrorCode.BASKET_NOT_FOUND,
@@ -145,9 +145,9 @@ describe('Result utilities', () => {
         TebexErrorCode.TEBEX_JS_NOT_LOADED,
         TebexErrorCode.CHECKOUT_CANCELLED,
         TebexErrorCode.CHECKOUT_FAILED,
-        TebexErrorCode.INVALID_COUPON,
-        TebexErrorCode.INVALID_GIFT_CARD,
-        TebexErrorCode.INVALID_CREATOR_CODE,
+        TebexErrorCode.COUPON_INVALID,
+        TebexErrorCode.GIFTCARD_INVALID,
+        TebexErrorCode.CREATOR_CODE_INVALID,
       ];
 
       for (const code of errorCodes) {
@@ -178,7 +178,7 @@ describe('Result utilities', () => {
     it('should support early return patterns', () => {
       function mayFail(shouldFail: boolean): Result<number, TebexError> {
         if (shouldFail) {
-          return err(new TebexError(TebexErrorCode.UNKNOWN_ERROR));
+          return err(new TebexError(TebexErrorCode.UNKNOWN));
         }
         return ok(42);
       }
@@ -192,7 +192,7 @@ describe('Result utilities', () => {
       const failure = mayFail(true);
       expect(failure.success).toBe(false);
       if (!failure.success) {
-        expect(failure.error.code).toBe(TebexErrorCode.UNKNOWN_ERROR);
+        expect(failure.error.code).toBe(TebexErrorCode.UNKNOWN);
       }
     });
 
@@ -308,7 +308,7 @@ describe('Result utilities', () => {
     });
 
     it('should return readonly error result', () => {
-      const result = err(new TebexError(TebexErrorCode.UNKNOWN_ERROR));
+      const result = err(new TebexError(TebexErrorCode.UNKNOWN));
 
       expect(result.success).toBe(false);
       expect(typeof result.success).toBe('boolean');

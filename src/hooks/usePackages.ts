@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import type { Package } from 'tebex_headless';
 
 import { TebexError } from '../errors/TebexError';
@@ -32,13 +32,11 @@ export function usePackages(options: UsePackagesOptions = {}): UsePackagesReturn
     queryFn: async (): Promise<Package[]> => {
       const tebex = getTebexClient();
 
-      // If categoryId is provided, get packages from that category
       if (categoryId !== undefined) {
         const category = await tebex.getCategory(categoryId);
         return category.packages;
       }
 
-      // Otherwise, get all packages from all categories
       const categories = await tebex.getCategories(true);
       const allPackages: Package[] = [];
 
@@ -49,6 +47,7 @@ export function usePackages(options: UsePackagesOptions = {}): UsePackagesReturn
       return allPackages;
     },
     enabled,
+    staleTime: 5 * 60 * 1000,
   });
 
   const error = useMemo(
@@ -56,14 +55,18 @@ export function usePackages(options: UsePackagesOptions = {}): UsePackagesReturn
     [query.error],
   );
 
-  const getById = useMemo(
-    () => (id: number) => query.data?.find(pkg => pkg.id === id),
-    [query.data],
+  const dataRef = useRef(query.data);
+  dataRef.current = query.data;
+
+  const getById = useCallback(
+    (id: number) => dataRef.current?.find(pkg => pkg.id === id),
+    [],
   );
 
-  const getByName = useMemo(
-    () => (name: string) => query.data?.find(pkg => pkg.name.toLowerCase() === name.toLowerCase()),
-    [query.data],
+  const getByName = useCallback(
+    (name: string) =>
+      dataRef.current?.find(pkg => pkg.name.toLowerCase() === name.toLowerCase()),
+    [],
   );
 
   return {

@@ -28,6 +28,16 @@ declare global {
   }
 }
 
+/** Timeout for checkout sessions to prevent promises from hanging forever. */
+const CHECKOUT_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+
+/**
+ * Generation counter to prevent stale event handlers from interfering.
+ * Each new checkout launch increments this counter, and handlers check
+ * their generation against the current value before acting.
+ */
+let checkoutGeneration = 0;
+
 /**
  * Hook to launch the Tebex checkout modal.
  *
@@ -78,9 +88,10 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
         const tebexCheckout = tebexGlobal.checkout;
         let isSettled = false;
 
-        // Define handlers so we can remove them later
+        const currentGeneration = ++checkoutGeneration;
+
         const handleComplete = (): void => {
-          if (isSettled) return;
+          if (currentGeneration !== checkoutGeneration || isSettled) return;
           isSettled = true;
           cleanup();
           clearBasket();
@@ -89,7 +100,7 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
         };
 
         const handleError = (data?: unknown): void => {
-          if (isSettled) return;
+          if (currentGeneration !== checkoutGeneration || isSettled) return;
           isSettled = true;
           cleanup();
           const error = new TebexError(TebexErrorCode.CHECKOUT_FAILED, String(data));
@@ -99,20 +110,27 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
         };
 
         const handleClose = (): void => {
-          if (isSettled) return;
+          if (currentGeneration !== checkoutGeneration || isSettled) return;
           isSettled = true;
           cleanup();
           options.onClose?.();
           resolve();
         };
 
-        // MutationObserver to detect modal removal from DOM (fallback for close event)
         let observer: MutationObserver | null = null;
         let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-        // Cleanup function to disconnect observer and clear timers
-        // Note: Tebex.js doesn't support off() method, so we rely on isSettled flag
+        const timeoutId = setTimeout(() => {
+          if (!isSettled) {
+            isSettled = true;
+            cleanup();
+            reject(new TebexError(TebexErrorCode.TIMEOUT, 'Checkout session timed out'));
+          }
+        }, CHECKOUT_TIMEOUT_MS);
+
+        // Tebex.js doesn't support off(), so we rely on isSettled flag
         const cleanup = (): void => {
+          clearTimeout(timeoutId);
           if (observer !== null) {
             observer.disconnect();
             observer = null;
@@ -123,17 +141,14 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
           }
         };
 
-        // Helper to find Tebex modal element
         const findTebexModal = (): Element | null =>
           document.querySelector('iframe[src*="tebex"]') ??
           document.querySelector('[class*="tebex-js"]') ??
           document.querySelector('tebex-checkout[open]');
 
-        // Setup MutationObserver to detect when Tebex modal is removed
         const setupModalObserver = (): void => {
           let modalWasOpen = false;
 
-          // Debounced check to avoid excessive DOM queries
           const checkModal = (): void => {
             if (isSettled) return;
 
@@ -148,8 +163,6 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
 
           observer = new MutationObserver(() => {
             if (isSettled) return;
-
-            // Debounce: wait 50ms after last mutation before checking
             if (debounceTimer !== null) {
               clearTimeout(debounceTimer);
             }
@@ -161,7 +174,6 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
             subtree: true,
           });
 
-          // Check if modal is already open
           if (findTebexModal() !== null) {
             modalWasOpen = true;
           }
@@ -169,14 +181,12 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
 
         tebexCheckout.init({ ident: basketIdent });
 
-        // Register event handlers
         tebexCheckout.on('payment:complete', handleComplete);
         tebexCheckout.on('payment:error', handleError);
         tebexCheckout.on('close', handleClose);
 
         tebexCheckout.launch();
 
-        // Setup observer after launch to detect modal closure as fallback
         setupModalObserver();
       });
     },

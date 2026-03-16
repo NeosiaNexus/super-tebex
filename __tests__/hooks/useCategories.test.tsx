@@ -130,7 +130,7 @@ describe('useCategories', () => {
 
     // Verify error is populated
     expect(result.current.error).not.toBeNull();
-    expect(result.current.errorCode).toBe(TebexErrorCode.UNKNOWN);
+    expect(result.current.errorCode).toBe(TebexErrorCode.SERVER_ERROR);
     expect(result.current.categories).toBeNull();
   });
 

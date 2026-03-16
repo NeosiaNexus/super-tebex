@@ -1,7 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import type { Basket, BasketPackage } from 'tebex_headless';
 
 import { TebexError } from '../errors/TebexError';
@@ -34,12 +34,15 @@ import type { GiftPackageParams, UseGiftPackageReturn } from '../types/hooks';
  */
 export function useGiftPackage(): UseGiftPackageReturn {
   const basketIdent = useBasketStore(state => state.basketIdent);
+  const basketIdentRef = useRef(basketIdent);
+  basketIdentRef.current = basketIdent;
   const setBasketIdent = useBasketStore(state => state.setBasketIdent);
   const username = useUserStore(state => state.username);
   const queryClient = useQueryClient();
   const config = useTebexConfig();
 
   const giftMutation = useMutation({
+    scope: { id: 'basket-mutations' },
     mutationFn: async (params: GiftPackageParams): Promise<Basket> => {
       if (username === null || username.length === 0) {
         throw new TebexError(
@@ -48,7 +51,6 @@ export function useGiftPackage(): UseGiftPackageReturn {
         );
       }
 
-      // Validate target username format
       if (!isValidMinecraftUsername(params.targetUsername)) {
         throw new TebexError(
           TebexErrorCode.INVALID_USERNAME,
@@ -56,7 +58,6 @@ export function useGiftPackage(): UseGiftPackageReturn {
         );
       }
 
-      // Validate quantity if provided
       const quantity = params.quantity ?? 1;
       if (!isPositiveInteger(quantity)) {
         throw new TebexError(
@@ -67,8 +68,7 @@ export function useGiftPackage(): UseGiftPackageReturn {
 
       const tebex = getTebexClient();
 
-      // Ensure we have a basket
-      let ident = basketIdent;
+      let ident = useBasketStore.getState().basketIdent;
       if (ident === null) {
         const newBasket = await tebex.createMinecraftBasket(
           username,
@@ -79,23 +79,18 @@ export function useGiftPackage(): UseGiftPackageReturn {
         setBasketIdent(ident);
       }
 
-      // Add package as a gift
       await tebex.addPackageToBasket(ident, params.packageId, quantity, 'single', {
         gift_username: params.targetUsername,
       });
 
-      // Return updated basket for cache sync
       return tebex.getBasket(ident);
     },
     onMutate: async params => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({ queryKey: tebexKeys.basket(basketIdent) });
-
-      // Snapshot previous value
-      const previousBasket = queryClient.getQueryData<Basket | null>(tebexKeys.basket(basketIdent));
-
-      // Optimistically add the gift package (if we have a basket)
-      if (previousBasket !== null && previousBasket !== undefined) {
+      const ident = basketIdentRef.current;
+      if (ident === null) return;
+      await queryClient.cancelQueries({ queryKey: tebexKeys.basket(ident) });
+      const previousBasket = queryClient.getQueryData<Basket>(tebexKeys.basket(ident));
+      if (previousBasket !== undefined) {
         const optimisticPackage: BasketPackage = {
           id: params.packageId,
           name: 'Loading...',
@@ -109,24 +104,25 @@ export function useGiftPackage(): UseGiftPackageReturn {
           },
         };
 
-        queryClient.setQueryData<Basket>(tebexKeys.basket(basketIdent), {
+        queryClient.setQueryData<Basket>(tebexKeys.basket(ident), {
           ...previousBasket,
           packages: [...previousBasket.packages, optimisticPackage],
         });
       }
 
-      return { previousBasket };
+      return { previousBasket, ident };
     },
     onError: (_error, _params, context) => {
-      // Rollback on error
       if (context?.previousBasket !== undefined) {
-        queryClient.setQueryData(tebexKeys.basket(basketIdent), context.previousBasket);
+        queryClient.setQueryData(tebexKeys.basket(context.ident), context.previousBasket);
       }
       config.onError?.(TebexError.fromUnknown(_error));
     },
-    onSuccess: data => {
-      // Sync with server response
-      queryClient.setQueryData(tebexKeys.basket(basketIdent), data);
+    onSuccess: (data, _params, context) => {
+      const ident = context?.ident ?? basketIdentRef.current;
+      if (ident !== null) {
+        queryClient.setQueryData(tebexKeys.basket(ident), data);
+      }
     },
   });
 

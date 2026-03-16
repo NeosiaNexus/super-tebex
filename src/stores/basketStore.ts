@@ -41,12 +41,24 @@ export const useBasketStore = create<BasketStore>()(
       }),
       {
         name: 'tebex-basket-store',
-        // Skip hydration on server to avoid hydration mismatch
-        skipHydration: typeof window === 'undefined',
+        // Skip hydration — rehydrated manually in TebexProvider
+        skipHydration: true,
+        version: 1,
+        partialize: (state: BasketStore) => ({ basketIdent: state.basketIdent }),
+        migrate: (persistedState: unknown) => {
+          return persistedState as Pick<BasketStoreState, 'basketIdent'>;
+        },
+        onRehydrateStorage: () => {
+          return (_state: unknown, error?: unknown) => {
+            if (error !== undefined) {
+              // eslint-disable-next-line no-console
+              console.warn('[tebex] Failed to rehydrate basket store:', error);
+            }
+          };
+        },
       },
     ),
   ),
 );
 
-// Re-export types for consumers
 export type { BasketStore, BasketStoreActions, BasketStoreState };
