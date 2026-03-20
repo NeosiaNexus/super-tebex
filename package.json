@@ -81,7 +81,7 @@
     "prettier": "^3.8.1",
     "prettier-plugin-organize-imports": "^4.3.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react-dom": "^19.2.4",
     "tebex_headless": "^1.15.1",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
