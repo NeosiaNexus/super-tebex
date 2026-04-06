@@ -193,6 +193,128 @@ describe('useGiftPackage', () => {
     expect(giftResult.current.errorCode).not.toBeNull();
   });
 
+  it('should throw PACKAGE_NOT_FOUND when gifting with invalid packageId', async () => {
+    const wrapper = createWrapper();
+
+    // Set up user
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    await act(async () => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    await waitFor(() => {
+      expect(userResult.current.isAuthenticated).toBe(true);
+    });
+
+    const { result: giftResult } = renderHook(() => useGiftPackage(), { wrapper });
+
+    let thrownError: unknown = null;
+    await act(async () => {
+      try {
+        await giftResult.current.gift({
+          packageId: -1,
+          targetUsername: 'FriendPlayer',
+        });
+      } catch (e) {
+        thrownError = e;
+      }
+    });
+
+    expect(thrownError).not.toBeNull();
+    expectTebexError(thrownError, TebexErrorCode.PACKAGE_NOT_FOUND);
+  });
+
+  it('should throw PACKAGE_NOT_FOUND when gifting with zero packageId', async () => {
+    const wrapper = createWrapper();
+
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    await act(async () => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    await waitFor(() => {
+      expect(userResult.current.isAuthenticated).toBe(true);
+    });
+
+    const { result: giftResult } = renderHook(() => useGiftPackage(), { wrapper });
+
+    let thrownError: unknown = null;
+    await act(async () => {
+      try {
+        await giftResult.current.gift({
+          packageId: 0,
+          targetUsername: 'FriendPlayer',
+        });
+      } catch (e) {
+        thrownError = e;
+      }
+    });
+
+    expect(thrownError).not.toBeNull();
+    expectTebexError(thrownError, TebexErrorCode.PACKAGE_NOT_FOUND);
+  });
+
+  it('should throw INVALID_QUANTITY when gifting with invalid quantity', async () => {
+    const wrapper = createWrapper();
+
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    await act(async () => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    await waitFor(() => {
+      expect(userResult.current.isAuthenticated).toBe(true);
+    });
+
+    const { result: giftResult } = renderHook(() => useGiftPackage(), { wrapper });
+
+    let thrownError: unknown = null;
+    await act(async () => {
+      try {
+        await giftResult.current.gift({
+          packageId: 101,
+          targetUsername: 'FriendPlayer',
+          quantity: -1,
+        });
+      } catch (e) {
+        thrownError = e;
+      }
+    });
+
+    expect(thrownError).not.toBeNull();
+    expectTebexError(thrownError, TebexErrorCode.INVALID_QUANTITY);
+  });
+
+  it('should throw INVALID_USERNAME when gifting with invalid target username', async () => {
+    const wrapper = createWrapper();
+
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    await act(async () => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    await waitFor(() => {
+      expect(userResult.current.isAuthenticated).toBe(true);
+    });
+
+    const { result: giftResult } = renderHook(() => useGiftPackage(), { wrapper });
+
+    let thrownError: unknown = null;
+    await act(async () => {
+      try {
+        await giftResult.current.gift({
+          packageId: 101,
+          targetUsername: 'ab',
+        });
+      } catch (e) {
+        thrownError = e;
+      }
+    });
+
+    expect(thrownError).not.toBeNull();
+    expectTebexError(thrownError, TebexErrorCode.INVALID_USERNAME);
+  });
+
   it('should handle gift with default quantity', async () => {
     const wrapper = createWrapper();
 

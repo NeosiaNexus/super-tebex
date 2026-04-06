@@ -11,6 +11,7 @@ import { tebexKeys } from '../queries/keys';
 import { getTebexClient } from '../services/api';
 import { useBasketStore } from '../stores/basketStore';
 import type { UseGiftCardsReturn } from '../types/hooks';
+import { isNonEmptyString } from '../types/guards';
 import { useBasket } from './useBasket';
 
 /**
@@ -43,6 +44,9 @@ export function useGiftCards(): UseGiftCardsReturn {
   const applyMutation = useMutation({
     scope: { id: 'basket-mutations' },
     mutationFn: async (cardNumber: string): Promise<Basket> => {
+      if (!isNonEmptyString(cardNumber.trim())) {
+        throw new TebexError(TebexErrorCode.GIFTCARD_INVALID, 'Gift card number must be a non-empty string');
+      }
       const ident = basketIdentRef.current;
       if (ident === null) {
         throw new TebexError(TebexErrorCode.BASKET_NOT_FOUND);
@@ -83,6 +87,9 @@ export function useGiftCards(): UseGiftCardsReturn {
   const removeMutation = useMutation({
     scope: { id: 'basket-mutations' },
     mutationFn: async (cardNumber: string): Promise<Basket> => {
+      if (!isNonEmptyString(cardNumber.trim())) {
+        throw new TebexError(TebexErrorCode.GIFTCARD_INVALID, 'Gift card number must be a non-empty string');
+      }
       const ident = basketIdentRef.current;
       if (ident === null) {
         throw new TebexError(TebexErrorCode.BASKET_NOT_FOUND);

@@ -63,6 +63,8 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
   const config = useTebexConfig();
 
   const launchMutation = useMutation({
+    scope: { id: 'basket-mutations' },
+    retry: false,
     mutationFn: async (): Promise<void> => {
       if (basketIdent === null || basket === null) {
         throw new TebexError(TebexErrorCode.BASKET_NOT_FOUND);
@@ -124,7 +126,10 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
           if (!isSettled) {
             isSettled = true;
             cleanup();
-            reject(new TebexError(TebexErrorCode.TIMEOUT, 'Checkout session timed out'));
+            const error = new TebexError(TebexErrorCode.TIMEOUT, 'Checkout session timed out');
+            options.onError?.(error);
+            config.onError?.(error);
+            reject(error);
           }
         }, CHECKOUT_TIMEOUT_MS);
 
@@ -172,6 +177,8 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
           observer.observe(document.body, {
             childList: true,
             subtree: true,
+            attributes: true,
+            attributeFilter: ['open', 'style', 'class'],
           });
 
           if (findTebexModal() !== null) {
@@ -206,7 +213,7 @@ export function useCheckout(options: UseCheckoutOptions = {}): UseCheckoutReturn
     isLaunching: launchMutation.isPending,
     error,
     errorCode: error?.code ?? null,
-    canCheckout: basket !== null && !isEmpty,
+    canCheckout: basket !== null && !isEmpty && !launchMutation.isPending,
     checkoutUrl: basket?.links.checkout ?? null,
   };
 }

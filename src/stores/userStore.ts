@@ -49,7 +49,17 @@ export const useUserStore = create<UserStore>()(
         version: 1,
         partialize: (state: UserStore) => ({ username: state.username }),
         migrate: (persistedState: unknown) => {
-          return persistedState as Pick<UserStoreState, 'username'>;
+          if (
+            typeof persistedState === 'object' &&
+            persistedState !== null &&
+            'username' in persistedState
+          ) {
+            const state = persistedState as Record<string, unknown>;
+            return {
+              username: typeof state.username === 'string' ? state.username : null,
+            };
+          }
+          return { username: null };
         },
         onRehydrateStorage: () => {
           return (_state: unknown, error?: unknown) => {

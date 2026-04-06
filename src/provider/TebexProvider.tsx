@@ -1,8 +1,10 @@
 'use client';
 
 import { QueryClient, QueryClientProvider, type QueryClientConfig } from '@tanstack/react-query';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import { TebexError } from '../errors/TebexError';
+import { TebexErrorCode } from '../errors/codes';
 import { initTebexClient } from '../services/api';
 import { useBasketStore } from '../stores/basketStore';
 import { useUserStore } from '../stores/userStore';
@@ -23,8 +25,7 @@ const defaultQueryClientConfig: QueryClientConfig = {
       refetchOnReconnect: true,
     },
     mutations: {
-      retry: 2,
-      retryDelay: attemptIndex => Math.min(500 * 2 ** attemptIndex, 5000),
+      retry: false,
     },
   },
 };
@@ -33,7 +34,21 @@ const defaultQueryClientConfig: QueryClientConfig = {
  * Resolves the TebexConfig with default values.
  */
 function resolveConfig(config: TebexConfig): ResolvedTebexConfig {
-  const baseUrl = config.baseUrl.replace(/\/$/, ''); // Remove trailing slash
+  if (typeof config.publicKey !== 'string' || config.publicKey.trim().length === 0) {
+    throw new TebexError(
+      TebexErrorCode.INVALID_CONFIG,
+      'publicKey must be a non-empty string',
+    );
+  }
+
+  if (typeof config.baseUrl !== 'string' || config.baseUrl.trim().length === 0) {
+    throw new TebexError(
+      TebexErrorCode.INVALID_CONFIG,
+      'baseUrl must be a non-empty string',
+    );
+  }
+
+  const baseUrl = config.baseUrl.replace(/\/$/, '');
   const completePath = config.urls?.complete ?? '/shop/complete';
   const cancelPath = config.urls?.cancel ?? '/shop/cancel';
 
@@ -109,10 +124,33 @@ export function TebexProvider({
     initTebexClient(resolvedConfig.publicKey);
   });
 
+  const [isHydrated, setIsHydrated] = useState(() => {
+    return useBasketStore.persist.hasHydrated() && useUserStore.persist.hasHydrated();
+  });
+
+  const handleHydrationComplete = useCallback(() => {
+    if (useBasketStore.persist.hasHydrated() && useUserStore.persist.hasHydrated()) {
+      setIsHydrated(true);
+    }
+  }, []);
+
   useEffect(() => {
+    if (isHydrated) return;
+
+    const unsub1 = useBasketStore.persist.onFinishHydration(handleHydrationComplete);
+    const unsub2 = useUserStore.persist.onFinishHydration(handleHydrationComplete);
+
     void useBasketStore.persist.rehydrate();
     void useUserStore.persist.rehydrate();
-  }, []);
+
+    // Check again in case rehydration completed synchronously
+    handleHydrationComplete();
+
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, [isHydrated, handleHydrationComplete]);
 
   useEffect(() => {
     const handler = (e: StorageEvent): void => {
@@ -129,8 +167,9 @@ export function TebexProvider({
     () => ({
       config: resolvedConfig,
       queryClient,
+      isHydrated,
     }),
-    [resolvedConfig, queryClient],
+    [resolvedConfig, queryClient, isHydrated],
   );
 
   return (
@@ -140,4 +179,4 @@ export function TebexProvider({
   );
 }
 
-export { useTebexConfig, useTebexContext } from './context';
+export { useTebexConfig, useTebexContext, useTebexHydrated } from './context';

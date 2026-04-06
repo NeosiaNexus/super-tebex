@@ -37,14 +37,14 @@ export function useGiftPackage(): UseGiftPackageReturn {
   const basketIdentRef = useRef(basketIdent);
   basketIdentRef.current = basketIdent;
   const setBasketIdent = useBasketStore(state => state.setBasketIdent);
-  const username = useUserStore(state => state.username);
   const queryClient = useQueryClient();
   const config = useTebexConfig();
 
   const giftMutation = useMutation({
     scope: { id: 'basket-mutations' },
     mutationFn: async (params: GiftPackageParams): Promise<Basket> => {
-      if (username === null || username.length === 0) {
+      const currentUsername = useUserStore.getState().username;
+      if (currentUsername === null || currentUsername.length === 0) {
         throw new TebexError(
           TebexErrorCode.NOT_AUTHENTICATED,
           'Username is required to gift a package',
@@ -66,12 +66,19 @@ export function useGiftPackage(): UseGiftPackageReturn {
         );
       }
 
+      if (!isPositiveInteger(params.packageId)) {
+        throw new TebexError(
+          TebexErrorCode.PACKAGE_NOT_FOUND,
+          'Package ID must be a positive integer',
+        );
+      }
+
       const tebex = getTebexClient();
 
       let ident = useBasketStore.getState().basketIdent;
       if (ident === null) {
         const newBasket = await tebex.createMinecraftBasket(
-          username,
+          currentUsername,
           config.completeUrl,
           config.cancelUrl,
         );

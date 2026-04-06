@@ -316,6 +316,70 @@ describe('useGiftCards', () => {
     expect(giftCardsResult.current.errorCode).not.toBeNull();
   });
 
+  it('should throw GIFTCARD_INVALID when applying empty string', async () => {
+    const wrapper = createWrapper();
+
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    await act(async () => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+    });
+
+    const { result: giftCardsResult } = renderHook(() => useGiftCards(), { wrapper });
+
+    let thrownError: unknown = null;
+    await act(async () => {
+      try {
+        await giftCardsResult.current.apply('');
+      } catch (e) {
+        thrownError = e;
+      }
+    });
+
+    expect(thrownError).not.toBeNull();
+    expectTebexError(thrownError, TebexErrorCode.GIFTCARD_INVALID);
+  });
+
+  it('should throw GIFTCARD_INVALID when applying whitespace-only string', async () => {
+    const wrapper = createWrapper();
+
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    await act(async () => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+    });
+
+    const { result: giftCardsResult } = renderHook(() => useGiftCards(), { wrapper });
+
+    let thrownError: unknown = null;
+    await act(async () => {
+      try {
+        await giftCardsResult.current.apply('   ');
+      } catch (e) {
+        thrownError = e;
+      }
+    });
+
+    expect(thrownError).not.toBeNull();
+    expectTebexError(thrownError, TebexErrorCode.GIFTCARD_INVALID);
+  });
+
   it('should populate error and errorCode when remove fails', async () => {
     const wrapper = createWrapper();
 

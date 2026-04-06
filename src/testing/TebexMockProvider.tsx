@@ -288,11 +288,12 @@ export function TebexMockProvider({
     populateMockData(queryClient, resolvedMockData);
   }, [queryClient, resolvedMockData]);
 
-  // Context value
+  // Context value — mock provider is always considered hydrated
   const contextValue = useMemo<TebexContextValue>(
     () => ({
       config: resolvedConfig,
       queryClient,
+      isHydrated: true,
     }),
     [resolvedConfig, queryClient],
   );

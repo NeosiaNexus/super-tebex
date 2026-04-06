@@ -61,6 +61,26 @@ describe('Type Guards', () => {
       expect(isTebexError({ name: 'Error', message: 'test' })).toBe(false);
       expect(isTebexError(null)).toBe(false);
     });
+
+    it('should return true for duck-typed object with valid TebexErrorCode', () => {
+      const errorLike = { name: 'TebexError', code: 'BASKET_NOT_FOUND' };
+      expect(isTebexError(errorLike)).toBe(true);
+    });
+
+    it('should return false for duck-typed object with invalid code', () => {
+      const errorLike = { name: 'TebexError', code: 'GARBAGE' };
+      expect(isTebexError(errorLike)).toBe(false);
+    });
+
+    it('should return false for duck-typed object with missing code', () => {
+      const errorLike = { name: 'TebexError' };
+      expect(isTebexError(errorLike)).toBe(false);
+    });
+
+    it('should return false for duck-typed object with non-string code', () => {
+      const errorLike = { name: 'TebexError', code: 42 };
+      expect(isTebexError(errorLike)).toBe(false);
+    });
   });
 
   describe('isSuccess', () => {

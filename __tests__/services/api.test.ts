@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { TebexErrorCode } from '../../src/errors/codes';
 import {
   getTebexClient,
   initTebexClient,
@@ -45,6 +46,28 @@ describe('api service', () => {
 
       resetTebexClient();
       expect(isTebexClientInitialized()).toBe(false);
+    });
+  });
+
+  describe('initTebexClient validation', () => {
+    it('should throw INVALID_CONFIG for empty string', () => {
+      expect(() => initTebexClient('')).toThrow('publicKey must be a non-empty string');
+
+      try {
+        initTebexClient('');
+      } catch (error) {
+        expect(error).toHaveProperty('code', TebexErrorCode.INVALID_CONFIG);
+      }
+    });
+
+    it('should throw INVALID_CONFIG for whitespace-only string', () => {
+      expect(() => initTebexClient('   ')).toThrow('publicKey must be a non-empty string');
+
+      try {
+        initTebexClient('   ');
+      } catch (error) {
+        expect(error).toHaveProperty('code', TebexErrorCode.INVALID_CONFIG);
+      }
     });
   });
 });

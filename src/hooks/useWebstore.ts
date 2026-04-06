@@ -49,7 +49,7 @@ function transformWebstore(webstore: Webstore): WebstoreData {
     description: webstore.description,
     currency: currencyCode,
     domain: webstore.webstore_url,
-    logo: webstore.logo.length > 0 ? webstore.logo : null,
+    logo: typeof webstore.logo === 'string' && webstore.logo.length > 0 ? webstore.logo : null,
   };
 }
 

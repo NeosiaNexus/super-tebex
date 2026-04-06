@@ -56,8 +56,6 @@ export function useBasket(): UseBasketReturn {
   const basketIdent = useBasketStore(state => state.basketIdent);
   const setBasketIdent = useBasketStore(state => state.setBasketIdent);
   const clearBasketIdent = useBasketStore(state => state.clearBasketIdent);
-  const username = useUserStore(state => state.username);
-
   // Ref to avoid stale closure in mutation callbacks
   const basketIdentRef = useRef(basketIdent);
   basketIdentRef.current = basketIdent;
@@ -92,9 +90,10 @@ export function useBasket(): UseBasketReturn {
         tebexError.code === TebexErrorCode.BASKET_EXPIRED
       ) {
         clearBasketIdent();
+        queryClient.removeQueries({ queryKey: tebexKeys.baskets() });
       }
     }
-  }, [basketQuery.error, clearBasketIdent]);
+  }, [basketQuery.error, clearBasketIdent, queryClient]);
 
   const ensureBasket = useCallback(async (): Promise<string> => {
     const currentIdent = useBasketStore.getState().basketIdent;
@@ -103,7 +102,8 @@ export function useBasket(): UseBasketReturn {
     if (basketCreationPromise !== null) return basketCreationPromise;
 
     const createBasket = async (): Promise<string> => {
-      if (username === null || username.length === 0) {
+      const currentUsername = useUserStore.getState().username;
+      if (currentUsername === null || currentUsername.length === 0) {
         throw new TebexError(
           TebexErrorCode.NOT_AUTHENTICATED,
           'Username is required to create a basket',
@@ -112,7 +112,7 @@ export function useBasket(): UseBasketReturn {
 
       const tebex = getTebexClient();
       const newBasket = await tebex.createMinecraftBasket(
-        username,
+        currentUsername,
         config.completeUrl,
         config.cancelUrl,
       );
@@ -126,7 +126,7 @@ export function useBasket(): UseBasketReturn {
     });
 
     return basketCreationPromise;
-  }, [username, config.completeUrl, config.cancelUrl, setBasketIdent]);
+  }, [config.completeUrl, config.cancelUrl, setBasketIdent]);
 
   const addMutation = useMutation<Basket, Error, AddPackageParams, BasketMutationContext>({
     scope: { id: 'basket-mutations' },
@@ -140,18 +140,34 @@ export function useBasket(): UseBasketReturn {
         );
       }
 
+      const attemptAdd = async (ident: string): Promise<Basket> => {
+        const tebex = getTebexClient();
+        await tebex.addPackageToBasket(
+          ident,
+          params.packageId,
+          quantity,
+          params.type,
+          params.variableData,
+        );
+        return tebex.getBasket(ident);
+      };
+
       const ident = await ensureBasket();
-      const tebex = getTebexClient();
 
-      await tebex.addPackageToBasket(
-        ident,
-        params.packageId,
-        quantity,
-        params.type,
-        params.variableData,
-      );
-
-      return tebex.getBasket(ident);
+      try {
+        return await attemptAdd(ident);
+      } catch (error) {
+        const tebexError = TebexError.fromUnknown(error);
+        if (
+          tebexError.code === TebexErrorCode.BASKET_NOT_FOUND ||
+          tebexError.code === TebexErrorCode.BASKET_EXPIRED
+        ) {
+          clearBasketIdent();
+          const newIdent = await ensureBasket();
+          return attemptAdd(newIdent);
+        }
+        throw error;
+      }
     },
     onMutate: async (params): Promise<BasketMutationContext> => {
       const ident = basketIdentRef.current;
@@ -219,12 +235,13 @@ export function useBasket(): UseBasketReturn {
   const removeMutation = useMutation<Basket, Error, number, BasketMutationContext>({
     scope: { id: 'basket-mutations' },
     mutationFn: async (packageId: number): Promise<Basket> => {
-      if (basketIdent === null) {
+      const ident = useBasketStore.getState().basketIdent;
+      if (ident === null) {
         throw new TebexError(TebexErrorCode.BASKET_NOT_FOUND);
       }
       const tebex = getTebexClient();
-      await tebex.removePackage(basketIdent, packageId);
-      return tebex.getBasket(basketIdent);
+      await tebex.removePackage(ident, packageId);
+      return tebex.getBasket(ident);
     },
     onMutate: async (packageId): Promise<BasketMutationContext> => {
       const ident = basketIdentRef.current;
@@ -270,12 +287,13 @@ export function useBasket(): UseBasketReturn {
         );
       }
 
-      if (basketIdent === null) {
+      const ident = useBasketStore.getState().basketIdent;
+      if (ident === null) {
         throw new TebexError(TebexErrorCode.BASKET_NOT_FOUND);
       }
       const tebex = getTebexClient();
-      await tebex.updateQuantity(basketIdent, params.packageId, params.quantity);
-      return tebex.getBasket(basketIdent);
+      await tebex.updateQuantity(ident, params.packageId, params.quantity);
+      return tebex.getBasket(ident);
     },
     onMutate: async (params): Promise<BasketMutationContext> => {
       const ident = basketIdentRef.current;

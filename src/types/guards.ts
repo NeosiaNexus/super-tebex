@@ -1,4 +1,5 @@
 import { TebexError } from '../errors/TebexError';
+import { TebexErrorCode } from '../errors/codes';
 import type { Result } from './result';
 
 /**
@@ -6,13 +7,20 @@ import type { Result } from './result';
  */
 export function isTebexError(error: unknown): error is TebexError {
   if (error instanceof TebexError) return true;
-  return (
+
+  if (
     typeof error === 'object' &&
     error !== null &&
     'name' in error &&
     'code' in error &&
     (error as { name: unknown }).name === 'TebexError'
-  );
+  ) {
+    const code = (error as { code: unknown }).code;
+    return typeof code === 'string' &&
+      (Object.values(TebexErrorCode) as string[]).includes(code);
+  }
+
+  return false;
 }
 
 /**

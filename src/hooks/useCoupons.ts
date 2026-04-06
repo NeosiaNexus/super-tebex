@@ -10,6 +10,7 @@ import { useTebexConfig } from '../provider/TebexProvider';
 import { tebexKeys } from '../queries/keys';
 import { getTebexClient } from '../services/api';
 import { useBasketStore } from '../stores/basketStore';
+import { isNonEmptyString } from '../types/guards';
 import type { UseCouponsReturn } from '../types/hooks';
 import { useBasket } from './useBasket';
 
@@ -43,6 +44,9 @@ export function useCoupons(): UseCouponsReturn {
   const applyMutation = useMutation({
     scope: { id: 'basket-mutations' },
     mutationFn: async (couponCode: string): Promise<Basket> => {
+      if (!isNonEmptyString(couponCode.trim())) {
+        throw new TebexError(TebexErrorCode.COUPON_INVALID, 'Coupon code must be a non-empty string');
+      }
       const ident = basketIdentRef.current;
       if (ident === null) {
         throw new TebexError(TebexErrorCode.BASKET_NOT_FOUND);
@@ -82,6 +86,9 @@ export function useCoupons(): UseCouponsReturn {
   const removeMutation = useMutation({
     scope: { id: 'basket-mutations' },
     mutationFn: async (couponCode: string): Promise<Basket> => {
+      if (!isNonEmptyString(couponCode.trim())) {
+        throw new TebexError(TebexErrorCode.COUPON_INVALID, 'Coupon code must be a non-empty string');
+      }
       const ident = basketIdentRef.current;
       if (ident === null) {
         throw new TebexError(TebexErrorCode.BASKET_NOT_FOUND);

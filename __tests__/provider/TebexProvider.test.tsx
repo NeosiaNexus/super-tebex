@@ -193,4 +193,48 @@ describe('TebexProvider', () => {
       expect(result.current.cancelUrl).toBe('https://example.com/shop/cancel');
     });
   });
+
+  describe('Config validation', () => {
+    it('should throw INVALID_CONFIG for empty publicKey', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      expect(() => {
+        render(
+          <TebexProvider config={{ publicKey: '', baseUrl: 'https://test.com' }}>
+            <div />
+          </TebexProvider>,
+        );
+      }).toThrow('publicKey must be a non-empty string');
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should throw INVALID_CONFIG for empty baseUrl', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      expect(() => {
+        render(
+          <TebexProvider config={{ publicKey: 'valid-key', baseUrl: '' }}>
+            <div />
+          </TebexProvider>,
+        );
+      }).toThrow('baseUrl must be a non-empty string');
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should throw INVALID_CONFIG for whitespace-only publicKey', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      expect(() => {
+        render(
+          <TebexProvider config={{ publicKey: '   ', baseUrl: 'https://test.com' }}>
+            <div />
+          </TebexProvider>,
+        );
+      }).toThrow('publicKey must be a non-empty string');
+
+      consoleSpy.mockRestore();
+    });
+  });
 });

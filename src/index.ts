@@ -1,4 +1,4 @@
-export { TebexProvider, useTebexConfig, useTebexContext } from './provider';
+export { TebexProvider, useTebexConfig, useTebexContext, useTebexHydrated } from './provider';
 
 export {
   useBasket,

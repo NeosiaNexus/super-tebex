@@ -13,6 +13,7 @@ import type { ResolvedTebexConfig } from '../types/config';
 export interface TebexContextValue {
   readonly config: ResolvedTebexConfig;
   readonly queryClient: QueryClient;
+  readonly isHydrated: boolean;
 }
 
 /**
@@ -47,4 +48,13 @@ export function useTebexContext(): TebexContextValue {
 export function useTebexConfig(): ResolvedTebexConfig {
   const { config } = useTebexContext();
   return config;
+}
+
+/**
+ * Hook to check if Zustand stores have finished hydrating from localStorage.
+ * Useful to prevent actions before persisted state is available.
+ */
+export function useTebexHydrated(): boolean {
+  const { isHydrated } = useTebexContext();
+  return isHydrated;
 }

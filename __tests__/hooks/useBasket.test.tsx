@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { useBasket } from '../../src/hooks/useBasket';
 import { useUser } from '../../src/hooks/useUser';
-import { errorHandlers } from '../mocks/handlers';
+import { useBasketStore } from '../../src/stores/basketStore';
+import { useUserStore } from '../../src/stores/userStore';
+import { errorHandlers, mockData } from '../mocks/handlers';
 import { server } from '../setup';
 import {
   assertTebexError,
@@ -1019,5 +1021,344 @@ describe('useBasket', () => {
     });
 
     expect(basketResult.current.itemCount).toBe(7);
+  });
+});
+
+// ============================================================================
+// Basket expiration recovery, store-based reads, and query error cleanup
+// ============================================================================
+
+describe('useBasket - expired basket auto-recovery and store reads', () => {
+  it('should auto-recover when addPackage hits 410 (expired) on stale basket', async () => {
+    const wrapper = createWrapper();
+
+    // Set username via store (simulating persisted state)
+    useUserStore.setState({ username: 'TestPlayer' });
+
+    // Create a basket first so we have a known ident
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+    });
+
+    const oldIdent = basketResult.current.basketIdent;
+
+    // Now simulate the basket expiring: the next addPackageToBasket call returns 410,
+    // which triggers the retry-with-recreate logic.
+    // Status 410 maps to BASKET_EXPIRED in TebexError.fromUnknown().
+    let addCallCount = 0;
+    // Track the package that was added to the new basket so GET handler can return it
+    let recoveredBasketPackage: { ident: string; packageId: number; quantity: number } | null = null;
+
+    server.use(
+      http.post('https://headless.tebex.io/api/baskets/:basketIdent/packages', async ({ params, request }) => {
+        addCallCount++;
+        const ident = params.basketIdent as string;
+
+        // Calls with the OLD ident return 410 (expired)
+        if (ident === oldIdent) {
+          return HttpResponse.json({ error: 'Basket expired' }, { status: 410 });
+        }
+
+        // Calls with a NEW basket ident succeed normally
+        const body = (await request.json()) as Record<string, unknown>;
+        const packageId = body.package_id as number;
+        const quantity = (body.quantity as number) ?? 1;
+
+        // Track the added package for the GET handler
+        recoveredBasketPackage = { ident, packageId, quantity };
+
+        return HttpResponse.json({
+          data: {
+            ...mockData.basket,
+            ident,
+            packages: [
+              {
+                id: packageId,
+                name: 'VIP Gold',
+                description: 'Gold VIP package',
+                image: null,
+                in_basket: { quantity, price: 9.99 * quantity, gift_username: null },
+              },
+            ],
+            total_price: 9.99 * quantity,
+          },
+        });
+      }),
+      // Override GET basket to return the package for the recovered basket
+      http.get('https://headless.tebex.io/api/accounts/:webstoreId/baskets/:basketIdent', ({ params }) => {
+        const ident = params.basketIdent as string;
+
+        // If this is the recovered basket and we have the package data, return it
+        if (recoveredBasketPackage !== null && ident === recoveredBasketPackage.ident) {
+          return HttpResponse.json({
+            data: {
+              ...mockData.basket,
+              ident,
+              packages: [
+                {
+                  id: recoveredBasketPackage.packageId,
+                  name: 'VIP Gold',
+                  description: 'Gold VIP package',
+                  image: null,
+                  in_basket: {
+                    quantity: recoveredBasketPackage.quantity,
+                    price: 9.99 * recoveredBasketPackage.quantity,
+                    gift_username: null,
+                  },
+                },
+              ],
+              total_price: 9.99 * recoveredBasketPackage.quantity,
+            },
+          });
+        }
+
+        // Default: empty basket
+        return HttpResponse.json({
+          data: { ...mockData.basket, ident, packages: [], total_price: 0 },
+        });
+      }),
+    );
+
+    // Try adding a package - should fail on old ident, then auto-recover
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101, quantity: 1 });
+    });
+
+    // The retry logic should have created a new basket with a different ident
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+      expect(basketResult.current.basketIdent).not.toBe(oldIdent);
+    });
+
+    // addPackageToBasket was called at least twice (once for old, once for new)
+    expect(addCallCount).toBeGreaterThanOrEqual(2);
+
+    // Package should be in the basket after recovery
+    await waitFor(() => {
+      expect(basketResult.current.packages).toHaveLength(1);
+      expect(basketResult.current.packages[0].id).toBe(101);
+    });
+  });
+
+  it('should clear ident and remove queries when basketQuery returns BASKET_EXPIRED', async () => {
+    const wrapper = createWrapper();
+
+    // Set username
+    useUserStore.setState({ username: 'TestPlayer' });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Create a basket first
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+    });
+
+    // Override the GET basket handler to return 410 (basket expired).
+    // Status 410 reliably maps to BASKET_EXPIRED in TebexError.fromUnknown().
+    // The basket query's custom retry function returns false for BASKET_EXPIRED,
+    // so the error settles immediately and triggers the useEffect cleanup.
+    server.use(errorHandlers.basketGetExpired);
+
+    // Trigger a refetch which will hit the 410
+    act(() => {
+      void basketResult.current.refetch();
+    });
+
+    // The useEffect should detect the BASKET_EXPIRED error and clear the ident
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).toBeNull();
+    });
+
+    // Basket should be null after cleanup
+    expect(basketResult.current.basket).toBeNull();
+    expect(basketResult.current.isEmpty).toBe(true);
+  });
+
+  it('should also clear zustand store when basketQuery detects BASKET_EXPIRED', async () => {
+    const wrapper = createWrapper();
+
+    useUserStore.setState({ username: 'TestPlayer' });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Create a basket
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+    });
+
+    // Verify the store has the ident
+    expect(useBasketStore.getState().basketIdent).not.toBeNull();
+
+    // Override GET basket to return expired (410)
+    server.use(errorHandlers.basketGetExpired);
+
+    // Trigger refetch
+    act(() => {
+      void basketResult.current.refetch();
+    });
+
+    // The useEffect should detect BASKET_EXPIRED and clear the ident in both hook and store
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).toBeNull();
+    });
+
+    // Verify the zustand store was also cleared
+    expect(useBasketStore.getState().basketIdent).toBeNull();
+    expect(basketResult.current.basket).toBeNull();
+  });
+
+  it('should read basketIdent from store in removeMutation (not closure)', async () => {
+    const wrapper = createWrapper();
+
+    // Pre-set username in the store directly
+    useUserStore.setState({ username: 'TestPlayer' });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add a package to create a basket
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+      expect(basketResult.current.packages).toHaveLength(1);
+    });
+
+    // Verify the basketIdent is in the store
+    const storeIdent = useBasketStore.getState().basketIdent;
+    expect(storeIdent).not.toBeNull();
+
+    // Remove the package - removeMutation reads ident from store via getState()
+    await act(async () => {
+      await basketResult.current.removePackage(101);
+    });
+
+    // Verify the package was removed successfully
+    await waitFor(() => {
+      expect(basketResult.current.packages).toHaveLength(0);
+    });
+    expect(basketResult.current.isEmpty).toBe(true);
+  });
+
+  it('should read basketIdent from store in updateQuantityMutation (not closure)', async () => {
+    const wrapper = createWrapper();
+
+    // Pre-set username in the store directly
+    useUserStore.setState({ username: 'TestPlayer' });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Add a package to create a basket
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101, quantity: 1 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+      expect(basketResult.current.packages).toHaveLength(1);
+    });
+
+    // Verify the basketIdent is in the store
+    const storeIdent = useBasketStore.getState().basketIdent;
+    expect(storeIdent).not.toBeNull();
+
+    // Update quantity - updateQuantityMutation reads ident from store via getState()
+    await act(async () => {
+      await basketResult.current.updateQuantity({ packageId: 101, quantity: 7 });
+    });
+
+    // Verify quantity was updated
+    await waitFor(() => {
+      expect(basketResult.current.packages[0].in_basket.quantity).toBe(7);
+    });
+
+    expect(basketResult.current.itemCount).toBe(7);
+  });
+
+  it('should read username from store in ensureBasket (not render closure)', async () => {
+    const wrapper = createWrapper();
+
+    // Do NOT set username via useUser hook — set it directly in the store
+    // This validates that ensureBasket calls useUserStore.getState().username
+    useUserStore.setState({ username: 'StorePlayer' });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // addPackage triggers ensureBasket which should read username from the store
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101, quantity: 1 });
+    });
+
+    // Should succeed and create a basket
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+    });
+
+    expect(basketResult.current.basketIdent).toMatch(/^basket-/);
+    expect(basketResult.current.packages).toHaveLength(1);
+  });
+
+  it('should reject addPackage with INVALID_QUANTITY for zero quantity', async () => {
+    const wrapper = createWrapper();
+
+    useUserStore.setState({ username: 'TestPlayer' });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    let thrownError: unknown = null;
+    await act(async () => {
+      try {
+        await basketResult.current.addPackage({ packageId: 101, quantity: 0 });
+      } catch (e) {
+        thrownError = e;
+      }
+    });
+
+    expect(thrownError).not.toBeNull();
+    expectTebexError(thrownError, TebexErrorCode.INVALID_QUANTITY);
+  });
+
+  it('should reject updateQuantity with INVALID_QUANTITY for negative quantity', async () => {
+    const wrapper = createWrapper();
+
+    useUserStore.setState({ username: 'TestPlayer' });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+
+    // Create a basket first
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+    });
+
+    let thrownError: unknown = null;
+    await act(async () => {
+      try {
+        await basketResult.current.updateQuantity({ packageId: 101, quantity: -1 });
+      } catch (e) {
+        thrownError = e;
+      }
+    });
+
+    expect(thrownError).not.toBeNull();
+    expectTebexError(thrownError, TebexErrorCode.INVALID_QUANTITY);
   });
 });

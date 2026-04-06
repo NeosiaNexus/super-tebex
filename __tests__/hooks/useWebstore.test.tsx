@@ -1,8 +1,9 @@
 import { renderHook, waitFor } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 
 import { useWebstore } from '../../src/hooks/useWebstore';
-import { errorHandlers, webstoreWithLogoHandler } from '../mocks/handlers';
+import { errorHandlers, mockData, webstoreWithLogoHandler } from '../mocks/handlers';
 import { server } from '../setup';
 import { createWrapper, TebexErrorCode } from '../utils/test-utils';
 
@@ -106,5 +107,93 @@ describe('useWebstore', () => {
 
     // Verify refetch is available
     expect(typeof result.current.refetch).toBe('function');
+  });
+
+  // ============================================================================
+  // NEW TESTS: Logo null guard and currency type handling
+  // ============================================================================
+
+  it('should return logo as null when API returns logo: null', async () => {
+    server.use(
+      http.get('https://headless.tebex.io/api/accounts/:webstoreId', () => {
+        return HttpResponse.json({
+          data: { ...mockData.webstore, logo: null },
+        });
+      }),
+    );
+
+    const { result } = renderHook(() => useWebstore(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.webstore).not.toBeNull();
+    expect(result.current.webstore?.logo).toBeNull();
+  });
+
+  it('should return logo as null when API returns logo: empty string', async () => {
+    server.use(
+      http.get('https://headless.tebex.io/api/accounts/:webstoreId', () => {
+        return HttpResponse.json({
+          data: { ...mockData.webstore, logo: '' },
+        });
+      }),
+    );
+
+    const { result } = renderHook(() => useWebstore(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.webstore).not.toBeNull();
+    expect(result.current.webstore?.logo).toBeNull();
+  });
+
+  it('should handle string currency from API', async () => {
+    server.use(
+      http.get('https://headless.tebex.io/api/accounts/:webstoreId', () => {
+        return HttpResponse.json({
+          data: { ...mockData.webstore, currency: 'EUR' },
+        });
+      }),
+    );
+
+    const { result } = renderHook(() => useWebstore(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.webstore).not.toBeNull();
+    expect(result.current.currency).toBe('EUR');
+  });
+
+  it('should fallback to USD when currency is an unknown type', async () => {
+    server.use(
+      http.get('https://headless.tebex.io/api/accounts/:webstoreId', () => {
+        return HttpResponse.json({
+          data: { ...mockData.webstore, currency: 123 },
+        });
+      }),
+    );
+
+    const { result } = renderHook(() => useWebstore(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    expect(result.current.webstore).not.toBeNull();
+    expect(result.current.currency).toBe('USD');
   });
 });

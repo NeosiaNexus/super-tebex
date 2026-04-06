@@ -46,7 +46,17 @@ export const useBasketStore = create<BasketStore>()(
         version: 1,
         partialize: (state: BasketStore) => ({ basketIdent: state.basketIdent }),
         migrate: (persistedState: unknown) => {
-          return persistedState as Pick<BasketStoreState, 'basketIdent'>;
+          if (
+            typeof persistedState === 'object' &&
+            persistedState !== null &&
+            'basketIdent' in persistedState
+          ) {
+            const state = persistedState as Record<string, unknown>;
+            return {
+              basketIdent: typeof state.basketIdent === 'string' ? state.basketIdent : null,
+            };
+          }
+          return { basketIdent: null };
         },
         onRehydrateStorage: () => {
           return (_state: unknown, error?: unknown) => {

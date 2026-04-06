@@ -11,7 +11,14 @@ let tebexInstance: TebexHeadless | null = null;
  * This must be called before using any Tebex hooks.
  */
 export function initTebexClient(publicKey: string): void {
-  tebexInstance = new TebexHeadless(publicKey);
+  const trimmedKey = publicKey.trim();
+  if (trimmedKey.length === 0) {
+    throw new TebexError(
+      TebexErrorCode.INVALID_CONFIG,
+      'publicKey must be a non-empty string',
+    );
+  }
+  tebexInstance = new TebexHeadless(trimmedKey);
 }
 
 /**

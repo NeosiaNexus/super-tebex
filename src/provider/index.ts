@@ -1,1 +1,1 @@
-export { TebexProvider, useTebexConfig, useTebexContext } from './TebexProvider';
+export { TebexProvider, useTebexConfig, useTebexContext, useTebexHydrated } from './TebexProvider';

@@ -188,5 +188,242 @@ describe('TebexError', () => {
       expect(restored.code).toBe(original.code);
       expect(restored.message).toBe(original.message);
     });
+    it('should fall back to UNKNOWN for invalid error codes', () => {
+      const result = TebexError.fromJSON({ code: 'NOT_A_REAL_CODE' });
+      expect(result.code).toBe(TebexErrorCode.UNKNOWN);
+    });
+    it('should use code as message when message is omitted', () => {
+      const result = TebexError.fromJSON({ code: TebexErrorCode.TIMEOUT });
+      expect(result.message).toBe(TebexErrorCode.TIMEOUT);
+    });
+  });
+
+  describe('fromUnknown — new HTTP status codes', () => {
+    it('should map HTTP 400 to VALIDATION_ERROR', () => {
+      const error = { message: 'Bad request', response: { status: 400 } };
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.VALIDATION_ERROR);
+    });
+
+    it('should map HTTP 401 to FORBIDDEN', () => {
+      const error = { message: 'Unauthorized', response: { status: 401 } };
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.FORBIDDEN);
+    });
+
+    it('should map HTTP 408 to TIMEOUT', () => {
+      const error = { message: 'Request timeout', response: { status: 408 } };
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.TIMEOUT);
+    });
+
+    it('should map HTTP 409 to BASKET_LOCKED', () => {
+      const error = { message: 'Conflict', response: { status: 409 } };
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.BASKET_LOCKED);
+    });
+
+    it('should map HTTP 423 to BASKET_LOCKED', () => {
+      const error = { message: 'Locked', response: { status: 423 } };
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.BASKET_LOCKED);
+    });
+
+    it('should map HTTP 504 to TIMEOUT', () => {
+      const error = { message: 'Gateway timeout', response: { status: 504 } };
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.TIMEOUT);
+    });
+
+    it('should map HTTP 502 to SERVER_ERROR', () => {
+      const error = { message: 'Bad gateway', response: { status: 502 } };
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.SERVER_ERROR);
+    });
+
+    it('should map HTTP 503 to SERVER_ERROR', () => {
+      const error = { message: 'Service unavailable', response: { status: 503 } };
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.SERVER_ERROR);
+    });
+  });
+
+  describe('fromUnknown — HTTP 404 message context', () => {
+    it('should detect 404 with "package" as PACKAGE_NOT_FOUND', () => {
+      const error = Object.assign(new Error('Package not found'), { response: { status: 404 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.PACKAGE_NOT_FOUND);
+    });
+
+    it('should detect 404 with "category" as CATEGORY_NOT_FOUND', () => {
+      const error = Object.assign(new Error('Category not found'), { response: { status: 404 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.CATEGORY_NOT_FOUND);
+    });
+
+    it('should detect generic 404 as NOT_FOUND', () => {
+      const error = Object.assign(new Error('Resource not found'), { response: { status: 404 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.NOT_FOUND);
+    });
+  });
+
+  describe('fromUnknown — HTTP 422 message-based detection', () => {
+    it('should detect 422 with coupon already used', () => {
+      const error = Object.assign(new Error('This coupon has already been used'), { response: { status: 422 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.COUPON_ALREADY_USED);
+    });
+
+    it('should detect 422 with coupon invalid', () => {
+      const error = Object.assign(new Error('The coupon code is invalid'), { response: { status: 422 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.COUPON_INVALID);
+    });
+
+    it('should detect 422 with coupon expired', () => {
+      const error = Object.assign(new Error('This coupon has expired'), { response: { status: 422 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.COUPON_EXPIRED);
+    });
+
+    it('should detect 422 with gift card invalid', () => {
+      const error = Object.assign(new Error('Gift card is invalid'), { response: { status: 422 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.GIFTCARD_INVALID);
+    });
+
+    it('should detect 422 with gift card insufficient balance', () => {
+      const error = Object.assign(new Error('Gift card has insufficient balance'), { response: { status: 422 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.GIFTCARD_INSUFFICIENT_BALANCE);
+    });
+
+    it('should detect 422 with creator code invalid', () => {
+      const error = Object.assign(new Error('Creator code is invalid'), { response: { status: 422 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.CREATOR_CODE_INVALID);
+    });
+
+    it('should detect 422 with locked basket', () => {
+      const error = Object.assign(new Error('Basket is locked'), { response: { status: 422 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.BASKET_LOCKED);
+    });
+
+    it('should detect 422 with "lock" keyword', () => {
+      const error = Object.assign(new Error('Cannot modify a lock state'), { response: { status: 422 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.BASKET_LOCKED);
+    });
+
+    it('should detect 422 with disabled package', () => {
+      const error = Object.assign(new Error('Package is disabled'), { response: { status: 422 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.PACKAGE_DISABLED);
+    });
+
+    it('should detect 422 with out of stock', () => {
+      const error = Object.assign(new Error('Package is out of stock'), { response: { status: 422 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.PACKAGE_OUT_OF_STOCK);
+    });
+
+    it('should detect 422 with "stock" keyword', () => {
+      const error = Object.assign(new Error('Not enough stock available'), { response: { status: 422 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.PACKAGE_OUT_OF_STOCK);
+    });
+
+    it('should detect 422 with already own', () => {
+      const error = Object.assign(new Error('You already own this package'), { response: { status: 422 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.PACKAGE_ALREADY_OWNED);
+    });
+
+    it('should fall back to VALIDATION_ERROR for generic 422', () => {
+      const error = Object.assign(new Error('Unprocessable entity'), { response: { status: 422 } });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.VALIDATION_ERROR);
+    });
+  });
+
+  describe('fromUnknown — network and abort patterns', () => {
+    it('should detect AbortError as TIMEOUT', () => {
+      const error = new Error('The operation was aborted');
+      error.name = 'AbortError';
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.TIMEOUT);
+    });
+
+    it('should detect Safari "Load failed" as NETWORK_ERROR', () => {
+      const error = new Error('Load failed');
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.NETWORK_ERROR);
+    });
+
+    it('should detect ENOTFOUND as NETWORK_ERROR', () => {
+      const error = new Error('getaddrinfo ENOTFOUND api.tebex.io');
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.NETWORK_ERROR);
+    });
+
+    it('should detect ECONNRESET as NETWORK_ERROR', () => {
+      const error = new Error('read ECONNRESET');
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.NETWORK_ERROR);
+    });
+
+    it('should detect ECONNREFUSED as NETWORK_ERROR', () => {
+      const error = new Error('connect ECONNREFUSED 127.0.0.1:443');
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.NETWORK_ERROR);
+    });
+
+    it('should detect ECONNABORTED as NETWORK_ERROR', () => {
+      const error = new Error('Request ECONNABORTED');
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.NETWORK_ERROR);
+    });
+
+    it('should detect ERR_NETWORK as NETWORK_ERROR', () => {
+      const error = new Error('ERR_NETWORK');
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.NETWORK_ERROR);
+    });
+
+    it('should detect ETIMEDOUT as TIMEOUT', () => {
+      const error = new Error('connect ETIMEDOUT 1.2.3.4:443');
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.TIMEOUT);
+    });
+  });
+
+  describe('fromUnknown — Axios error.code detection', () => {
+    it('should detect Axios ERR_NETWORK code as NETWORK_ERROR', () => {
+      const error = Object.assign(new Error('Network Error'), { code: 'ERR_NETWORK' });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.NETWORK_ERROR);
+    });
+
+    it('should detect Axios ECONNABORTED code as TIMEOUT', () => {
+      const error = Object.assign(new Error('timeout of 5000ms exceeded'), { code: 'ECONNABORTED' });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.TIMEOUT);
+    });
+
+    it('should detect Axios ERR_CANCELED code as TIMEOUT', () => {
+      const error = Object.assign(new Error('canceled'), { code: 'ERR_CANCELED' });
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.TIMEOUT);
+    });
+  });
+
+  describe('extractStatusCode — status on error object directly', () => {
+    it('should extract status from error.status (no response wrapper)', () => {
+      const error = { message: 'Server error', status: 500 };
+      const result = TebexError.fromUnknown(error);
+      expect(result.code).toBe(TebexErrorCode.SERVER_ERROR);
+    });
   });
 });

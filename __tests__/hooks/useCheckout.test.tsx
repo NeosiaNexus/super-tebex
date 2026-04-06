@@ -436,6 +436,60 @@ describe('useCheckout', () => {
     expect(checkoutResult.current.checkoutUrl).toContain('checkout.tebex.io');
   });
 
+  it('should have canCheckout false while checkout is launching', async () => {
+    const wrapper = createWrapper();
+    const mockTebex = createMockTebexCheckout();
+    vi.stubGlobal('Tebex', mockTebex);
+
+    // Set up user and basket with a package
+    const { result: userResult } = renderHook(() => useUser(), { wrapper });
+    act(() => {
+      userResult.current.setUsername('TestPlayer');
+    });
+
+    const { result: basketResult } = renderHook(() => useBasket(), { wrapper });
+    await act(async () => {
+      await basketResult.current.addPackage({ packageId: 101 });
+    });
+
+    await waitFor(() => {
+      expect(basketResult.current.basketIdent).not.toBeNull();
+      expect(basketResult.current.isEmpty).toBe(false);
+    });
+
+    const { result: checkoutResult } = renderHook(() => useCheckout(), { wrapper });
+
+    // canCheckout should be true before launching
+    await waitFor(() => {
+      expect(checkoutResult.current.canCheckout).toBe(true);
+    });
+
+    // Start launch (don't await - it won't resolve until event fires)
+    act(() => {
+      void checkoutResult.current.launch();
+    });
+
+    // Wait for Tebex to be initialized and isLaunching to be true
+    await waitFor(() => {
+      expect(mockTebex.checkout.init).toHaveBeenCalled();
+      expect(checkoutResult.current.isLaunching).toBe(true);
+    });
+
+    // canCheckout should be false while isPending is true
+    expect(checkoutResult.current.canCheckout).toBe(false);
+
+    // Resolve the checkout by triggering close
+    await act(async () => {
+      mockTebex.triggerEvent('close');
+    });
+
+    // After resolving, canCheckout should be true again
+    await waitFor(() => {
+      expect(checkoutResult.current.isLaunching).toBe(false);
+      expect(checkoutResult.current.canCheckout).toBe(true);
+    });
+  });
+
   it('should call global onError from config on payment:error', async () => {
     const globalOnError = vi.fn();
     const wrapper = createWrapper({ ...testConfig, onError: globalOnError });

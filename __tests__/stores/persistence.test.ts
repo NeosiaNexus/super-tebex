@@ -209,6 +209,106 @@ describe('Store Persistence', () => {
     });
   });
 
+  describe('Migration validation', () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    afterEach(() => {
+      localStorage.clear();
+    });
+
+    it('should handle corrupted basketStore data with object missing basketIdent', () => {
+      localStorage.setItem(
+        'tebex-basket-store',
+        JSON.stringify({ state: { foo: 'bar' }, version: 0 }),
+      );
+      useBasketStore.persist.rehydrate();
+      expect(useBasketStore.getState().basketIdent).toBeNull();
+    });
+
+    it('should handle corrupted basketStore data with non-object state', () => {
+      localStorage.setItem(
+        'tebex-basket-store',
+        JSON.stringify({ state: 'corrupted', version: 0 }),
+      );
+      useBasketStore.persist.rehydrate();
+      expect(useBasketStore.getState().basketIdent).toBeNull();
+    });
+
+    it('should handle corrupted basketStore data with null state', () => {
+      localStorage.setItem(
+        'tebex-basket-store',
+        JSON.stringify({ state: null, version: 0 }),
+      );
+      useBasketStore.persist.rehydrate();
+      expect(useBasketStore.getState().basketIdent).toBeNull();
+    });
+
+    it('should handle basketStore data with non-string basketIdent during migration', () => {
+      localStorage.setItem(
+        'tebex-basket-store',
+        JSON.stringify({ state: { basketIdent: 12345 }, version: 0 }),
+      );
+      useBasketStore.persist.rehydrate();
+      expect(useBasketStore.getState().basketIdent).toBeNull();
+    });
+
+    it('should preserve valid basketStore data through migration', () => {
+      localStorage.setItem(
+        'tebex-basket-store',
+        JSON.stringify({ state: { basketIdent: 'abc123' }, version: 0 }),
+      );
+      useBasketStore.persist.rehydrate();
+      expect(useBasketStore.getState().basketIdent).toBe('abc123');
+    });
+
+    it('should handle corrupted userStore data with object missing username', () => {
+      localStorage.setItem(
+        'tebex-user-store',
+        JSON.stringify({ state: { foo: 'bar' }, version: 0 }),
+      );
+      useUserStore.persist.rehydrate();
+      expect(useUserStore.getState().username).toBeNull();
+    });
+
+    it('should handle corrupted userStore data with non-object state', () => {
+      localStorage.setItem(
+        'tebex-user-store',
+        JSON.stringify({ state: 'corrupted', version: 0 }),
+      );
+      useUserStore.persist.rehydrate();
+      expect(useUserStore.getState().username).toBeNull();
+    });
+
+    it('should handle corrupted userStore data with null state', () => {
+      localStorage.setItem(
+        'tebex-user-store',
+        JSON.stringify({ state: null, version: 0 }),
+      );
+      useUserStore.persist.rehydrate();
+      expect(useUserStore.getState().username).toBeNull();
+    });
+
+    it('should handle userStore data with non-string username during migration', () => {
+      localStorage.setItem(
+        'tebex-user-store',
+        JSON.stringify({ state: { username: 999 }, version: 0 }),
+      );
+      useUserStore.persist.rehydrate();
+      expect(useUserStore.getState().username).toBeNull();
+    });
+
+    it('should preserve valid userStore data through migration', () => {
+      localStorage.setItem(
+        'tebex-user-store',
+        JSON.stringify({ state: { username: 'TestUser' }, version: 0 }),
+      );
+      useUserStore.persist.rehydrate();
+      expect(useUserStore.getState().username).toBe('TestUser');
+    });
+  });
+
   describe('State reset behavior', () => {
     it('should reset basket store to initial state', () => {
       useBasketStore.getState().setBasketIdent('temp-basket');

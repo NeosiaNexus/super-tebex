@@ -10,6 +10,7 @@ import { useTebexConfig } from '../provider/TebexProvider';
 import { tebexKeys } from '../queries/keys';
 import { getTebexClient } from '../services/api';
 import { useBasketStore } from '../stores/basketStore';
+import { isNonEmptyString } from '../types/guards';
 import type { UseCreatorCodesReturn } from '../types/hooks';
 import { useBasket } from './useBasket';
 
@@ -43,6 +44,9 @@ export function useCreatorCodes(): UseCreatorCodesReturn {
   const applyMutation = useMutation({
     scope: { id: 'basket-mutations' },
     mutationFn: async (code: string): Promise<Basket> => {
+      if (!isNonEmptyString(code.trim())) {
+        throw new TebexError(TebexErrorCode.CREATOR_CODE_INVALID, 'Creator code must be a non-empty string');
+      }
       const ident = basketIdentRef.current;
       if (ident === null) {
         throw new TebexError(TebexErrorCode.BASKET_NOT_FOUND);
