@@ -1,7 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
-import { persist, subscribeWithSelector } from 'zustand/middleware';
+import { createJSONStorage, persist, subscribeWithSelector, type StateStorage } from 'zustand/middleware';
 
 /**
  * Basket store state interface.
@@ -41,6 +41,12 @@ export const useBasketStore = create<BasketStore>()(
       }),
       {
         name: 'tebex-basket-store',
+        // SSR-safe storage: avoids persist middleware early-return when window
+        // is undefined, which would leave .persist API unattached (zustand 5.x).
+        storage: createJSONStorage((): StateStorage => {
+          if (typeof window !== 'undefined') return window.localStorage;
+          return { getItem: () => null, setItem: () => undefined, removeItem: () => undefined };
+        }),
         // Skip hydration — rehydrated manually in TebexProvider
         skipHydration: true,
         version: 1,
